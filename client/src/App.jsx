@@ -22,16 +22,10 @@ async function fetchAppeal(analysis, patientName, insurerName) {
 }
 
 async function createCheckoutSession(planId) {
-  const customerEmail = window.prompt(
-    "Enter your billing email for Stripe checkout:",
-    "you@example.com"
-  );
-  if (!customerEmail) return null;
-
   const res = await fetch("/api/billing/checkout-session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ planId, customerEmail })
+    body: JSON.stringify({ planId })
   });
   const data = await res.json();
   if (!res.ok) {

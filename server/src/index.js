@@ -46,6 +46,27 @@ function getStripePriceId(c, planId, explicitPriceId) {
   return map[planId] || null;
 }
 
+/** Detect mis-paste: all three Cloudflare vars accidentally set to the same Stripe Price ID. */
+function assertDistinctPriceIds(c) {
+  const basic = c.env?.STRIPE_PRICE_BASIC;
+  const protector = c.env?.STRIPE_PRICE_PROTECTOR;
+  const family = c.env?.STRIPE_PRICE_FAMILY;
+  const set = [basic, protector, family].filter(Boolean);
+  if (set.length === 3 && new Set(set).size === 1) {
+    return "STRIPE_PRICE_BASIC, STRIPE_PRICE_PROTECTOR, and STRIPE_PRICE_FAMILY are all the same Price ID. In Stripe, each product has its own price_...; paste a different one for each variable.";
+  }
+  if (basic && protector && basic === protector) {
+    return "STRIPE_PRICE_BASIC and STRIPE_PRICE_PROTECTOR are identical. Use the Price ID from the Basic product for BASIC and the Protector product for PROTECTOR.";
+  }
+  if (basic && family && basic === family) {
+    return "STRIPE_PRICE_BASIC and STRIPE_PRICE_FAMILY are identical. Each plan needs its own price_... from Stripe.";
+  }
+  if (protector && family && protector === family) {
+    return "STRIPE_PRICE_PROTECTOR and STRIPE_PRICE_FAMILY are identical. Each plan needs its own price_... from Stripe.";
+  }
+  return null;
+}
+
 async function getUserSubscription(c) {
   const forceSubscription = c.env?.REQUIRE_SUBSCRIPTION === "true";
   const localPlan = c.req.header("x-subscription-plan") || "none";
@@ -190,34 +211,51 @@ app.post("/api/appeal", async (c) => {
 app.post("/api/billing/checkout-session", async (c) => {
   try {
     const body = await c.req.json();
+    const planId = String(body.planId || "")
+      .trim()
+      .toLowerCase();
     const origin = c.req.header("origin") || "https://statutebill.com";
     const successUrl = body.successUrl || `${origin}/billing/success`;
     const cancelUrl = body.cancelUrl || `${origin}/billing/cancel`;
 
-    const priceId = getStripePriceId(c, body.planId, body.priceId);
+    const dupMsg = assertDistinctPriceIds(c);
+    if (dupMsg) {
+      return c.json({ error: dupMsg, code: "DUPLICATE_PRICE_IDS" }, 400);
+    }
+
+    const priceId = getStripePriceId(c, planId, body.priceId);
     if (!priceId) {
       return c.json(
         {
           error: "priceId required",
-          hint: "Provide priceId in body, or configure STRIPE_PRICE_BASIC / STRIPE_PRICE_PROTECTOR / STRIPE_PRICE_FAMILY."
+          hint: "Provide priceId in body, or configure STRIPE_PRICE_BASIC / STRIPE_PRICE_PROTECTOR / STRIPE_PRICE_FAMILY (each must be a different price_... from Stripe)."
         },
         400
       );
     }
 
-    const session = await stripeRequest(c, "checkout/sessions", {
+    const sessionPayload = {
       mode: "subscription",
       "line_items[0][price]": priceId,
       "line_items[0][quantity]": 1,
       "payment_method_types[0]": "card",
-      customer: body.customerId,
-      customer_email: body.customerEmail,
+      "metadata[plan_id]": planId,
+      "metadata[price_id]": priceId,
       success_url: successUrl,
       cancel_url: cancelUrl,
       allow_promotion_codes: true
-    });
+    };
+    if (body.customerId) sessionPayload.customer = body.customerId;
+    if (body.customerEmail) sessionPayload.customer_email = body.customerEmail;
 
-    return c.json({ id: session.id, url: session.url });
+    const session = await stripeRequest(c, "checkout/sessions", sessionPayload);
+
+    return c.json({
+      id: session.id,
+      url: session.url,
+      planId,
+      priceId
+    });
   } catch (e) {
     return c.json({ error: e.message || "Checkout session failed" }, 500);
   }
