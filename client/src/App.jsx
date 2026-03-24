@@ -473,17 +473,17 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
+    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-slate-50 to-indigo-50">
+      <header className="border-b border-slate-200/80 bg-white/85 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
           <a href="/" className="flex items-center gap-2">
             <BrandLogo />
           </a>
           <nav className="flex items-center gap-4 text-sm font-medium text-brand-950">
-            <a href="#compliance" className="hover:text-brand-600">
+            <a href="#compliance" className="transition-colors hover:text-blue-600">
               Compliance
             </a>
-            <a href="#pricing" className="hover:text-brand-600">
+            <a href="#pricing" className="transition-colors hover:text-indigo-600">
               Plans
             </a>
           </nav>
@@ -505,13 +505,13 @@ export default function App() {
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <a
               href="#demo"
-              className="rounded-xl bg-brand-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
+              className="rounded-xl bg-gradient-to-r from-brand-950 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:from-brand-900 hover:to-blue-600"
             >
               Run compliance audit
             </a>
             <a
               href="#pricing"
-              className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-brand-950 hover:border-brand-300"
+              className="rounded-xl border border-slate-200 bg-white/90 px-5 py-2.5 text-sm font-semibold text-brand-950 transition hover:border-indigo-300 hover:bg-indigo-50/70"
             >
               View plans
             </a>
@@ -533,7 +533,7 @@ export default function App() {
                 as="div"
                 key={s.title}
                 delayMs={80 * i}
-                className="rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm"
+                className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-sky-50 p-4 text-center shadow-sm"
               >
                 <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-brand-950 text-sm font-bold text-white">
                   {i + 1}
@@ -581,7 +581,7 @@ export default function App() {
           <div
             onDragOver={(e) => e.preventDefault()}
             onDrop={onDrop}
-            className="mt-4 flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white p-5 text-center"
+            className="mt-4 flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-blue-200 bg-gradient-to-br from-white to-blue-50 p-5 text-center"
           >
             <input
               type="file"
@@ -599,7 +599,7 @@ export default function App() {
             type="button"
             disabled={loading}
             onClick={runDemo}
-            className="mt-3 w-full rounded-xl bg-brand-950 py-3 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
+            className="mt-3 w-full rounded-xl bg-gradient-to-r from-brand-950 to-indigo-700 py-3 text-sm font-semibold text-white transition hover:from-brand-900 hover:to-indigo-600 disabled:opacity-60"
           >
             {loading ? "Running…" : "Run audit (no file)"}
           </button>
@@ -622,7 +622,7 @@ export default function App() {
                     {fmt(result.analysis.summary.totalBilled)}
                   </p>
                 </div>
-                <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2">
+                <div className="rounded-xl border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
                     Potential overcharge (est.)
                   </p>
@@ -633,7 +633,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-brand-100 bg-brand-50/80 p-3 text-xs leading-relaxed text-ink-800">
+              <div className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/90 to-indigo-50/70 p-3 text-xs leading-relaxed text-ink-800">
                 <p className="font-semibold text-brand-950">Authoritative price reference (CMS)</p>
                 <p className="mt-1">
                   Benchmarks in this audit reference{" "}
@@ -717,7 +717,7 @@ export default function App() {
                   type="button"
                   disabled={letterLoading}
                   onClick={generateLetter}
-                  className="mt-2 rounded-lg bg-brand-950 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
+                  className="mt-2 rounded-lg bg-gradient-to-r from-brand-950 to-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:from-brand-900 hover:to-blue-600 disabled:opacity-60"
                 >
                   {letterLoading ? "Generating…" : "Generate Formal Request for Review"}
                 </button>
@@ -739,7 +739,7 @@ export default function App() {
           <AppealLetterPreview />
         </ScrollReveal>
 
-        <ScrollReveal as="section" id="pricing" className="mt-16 border-t border-slate-200 pt-14">
+        <ScrollReveal as="section" id="pricing" className="mt-16 border-t border-slate-200/80 pt-14">
           <h2 className="text-center font-display text-2xl font-bold text-brand-950">
             Plans
           </h2>
@@ -754,8 +754,8 @@ export default function App() {
                 delayMs={100 * (plan.featured ? 1 : plan.id === "family" ? 2 : 0)}
                 className={`flex flex-col rounded-2xl border p-5 ${
                   plan.featured
-                    ? "border-blue-400 bg-white shadow-md ring-2 ring-blue-100"
-                    : "border-slate-200 bg-white"
+                    ? "border-blue-400 bg-gradient-to-br from-white to-blue-50 shadow-md ring-2 ring-blue-100"
+                    : "border-slate-200 bg-gradient-to-br from-white to-indigo-50/40"
                 }`}
               >
                 <h3 className="font-semibold text-brand-950">{plan.name}</h3>
@@ -778,8 +778,8 @@ export default function App() {
                   disabled={billingLoadingPlan !== null}
                   className={`mt-5 w-full rounded-xl py-2.5 text-sm font-bold ${
                     plan.featured
-                      ? "bg-blue-600 text-white hover:bg-blue-700"
-                      : "bg-brand-950 text-white hover:bg-brand-800"
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
+                      : "bg-gradient-to-r from-brand-950 to-blue-700 text-white hover:from-brand-900 hover:to-blue-600"
                   } disabled:opacity-60`}
                 >
                   {billingLoadingPlan === plan.id ? "Opening checkout…" : plan.cta}
@@ -790,7 +790,7 @@ export default function App() {
         </ScrollReveal>
       </main>
 
-      <footer className="border-t border-slate-200 bg-slate-100/80">
+      <footer className="border-t border-slate-200/80 bg-gradient-to-r from-slate-100/80 to-indigo-100/70">
         <div className="mx-auto max-w-3xl px-4 py-8">
           <div className="rounded-xl border border-slate-200 bg-white px-5 py-5 text-center shadow-sm">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
