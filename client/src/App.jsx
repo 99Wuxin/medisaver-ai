@@ -189,22 +189,17 @@ export default function App() {
           <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
             <div>
               <p className="inline-flex rounded-full border border-brand-200 bg-white px-3 py-1 text-xs font-medium text-brand-950 shadow-sm">
-                The Settlement Shield · Statute-cited responses to U.S. hospitals &amp; payers
+                StatuteBill.com · Your always-on medical billing protection dashboard
               </p>
               <h1 className="mt-5 font-display text-4xl font-bold tracking-tight text-brand-950 sm:text-5xl">
-                Answer the hospital with{" "}
-                <span className="text-brand-600">the law on your side</span>
+                Stay protected every month with{" "}
+                <span className="text-brand-600">AI + legal-grade billing defense</span>
               </h1>
               <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-700">
-                MEDISAVER.AI maps your bill to{" "}
-                <strong className="font-semibold text-brand-950">
-                  federal rules hospitals and plans actually have to answer
-                </strong>
-                —price transparency (45 CFR Part 180), No Surprises Act hooks where they
-                apply, ERISA/PPACA claims rights for employer plans—layered with CMS-style
-                benchmarks so savings requests are specific, not a vague “discount ask.” Demo
-                uses simulated OCR and illustrative citations; verify applicability with a
-                professional before sending.
+                StatuteBill continuously audits incoming medical bills, flags risk, and
+                generates statute-backed appeal language. Instead of paying a one-time large
+                commission, you keep a subscription "shield" active for every future bill
+                event across your household.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <a
@@ -217,34 +212,27 @@ export default function App() {
                   href="#pricing"
                   className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-brand-950 shadow-sm hover:border-brand-300"
                 >
-                  Pay only if you save
+                  View monthly plans
                 </a>
               </div>
             </div>
             <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-soft">
-              <p className="text-sm font-semibold text-brand-950">Why “please lower my bill” fails</p>
+              <p className="text-sm font-semibold text-brand-950">Your protection dashboard</p>
               <ul className="mt-4 space-y-3 text-sm text-ink-700">
                 <li className="flex gap-2">
                   <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600" />
-                  Hospitals respond to{" "}
-                  <strong className="font-medium text-brand-950">documented rights</strong>
-                  —posted charges, plan terms, and federal patient protections—not polite email
-                  alone.
+                  <strong className="font-medium text-brand-950">Always-on bill watch:</strong>{" "}
+                  every new bill gets scanned for overcharge patterns and coding anomalies.
                 </li>
                 <li className="flex gap-2">
                   <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600" />
-                  The same CPT line can be billed at wildly different amounts; tying the
-                  dispute to{" "}
-                  <strong className="font-medium text-brand-950">benchmarks + citations</strong>{" "}
-                  changes the conversation.
+                  <strong className="font-medium text-brand-950">Legal leverage built-in:</strong>{" "}
+                  CPT-level findings tied to federal/statutory references for stronger negotiation.
                 </li>
                 <li className="flex gap-2">
                   <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600" />
-                  We pair each flagged line with{" "}
-                  <strong className="font-medium text-brand-950">
-                    illustrative U.S.C. / CFR references
-                  </strong>{" "}
-                  your appeal letter can invoke (demo—not legal advice).
+                  <strong className="font-medium text-brand-950">Credit-impact guard:</strong>{" "}
+                  track unresolved balances that may affect FICO and trigger appeal reminders.
                 </li>
               </ul>
             </div>
@@ -558,33 +546,80 @@ export default function App() {
         <section id="pricing" className="border-t border-slate-200 bg-brand-950 py-16 text-slate-100">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <h2 className="font-display text-2xl font-bold sm:text-3xl">
-              Pricing aligned with savings
+              Subscription plans for continuous protection
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-300">
-              We only earn a success fee when you actually reduce what you owe, secure a
-              refund, or resolve a disputed balance in your favor (
-              <strong className="text-white">demo has no payments</strong>
-              ). If we do not help you save, you do not pay a service fee—lower friction to
-              try, stronger incentive for us to deliver.
+              Ideal for chronic-care families and recurring billing events: keep your legal and
+              pricing defense on all month, not just one dispute.
             </p>
             <div className="mt-10 grid gap-6 md:grid-cols-3">
               {[
                 {
-                  t: "Aligned incentives",
-                  d: "Fees track dollars saved—not volume of disputes—so we do not profit from noise."
+                  name: "Basic",
+                  price: "$9.9",
+                  features: [
+                    "Unlimited bill audits",
+                    "AI risk flags",
+                    "Personal protection dashboard"
+                  ],
+                  cta: "Start Basic"
                 },
                 {
-                  t: "Citations first",
-                  d: "Flags pair pricing benchmarks with U.S.C. / CFR hooks so your letter reads like a rights-based request, not a favor."
+                  name: "Protector",
+                  price: "$19.9",
+                  features: [
+                    "Everything in Basic",
+                    "AI appeal letter generation",
+                    "FICO credit guard monitoring"
+                  ],
+                  cta: "Start 7-Day Free Trial",
+                  featured: true
                 },
                 {
-                  t: "Compliance",
-                  d: "Letters are drafts; complex cases should involve a licensed billing advocate or attorney."
+                  name: "Family Shield",
+                  price: "$29.9",
+                  features: [
+                    "All family members covered",
+                    "Unlimited shared case history",
+                    "24/7 statute guidance support"
+                  ],
+                  cta: "Protect My Family"
                 }
-              ].map((x) => (
-                <div key={x.t} className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                  <h3 className="font-semibold text-white">{x.t}</h3>
-                  <p className="mt-2 text-sm text-slate-300">{x.d}</p>
+              ].map((plan) => (
+                <div
+                  key={plan.name}
+                  className={`rounded-3xl p-6 ${
+                    plan.featured
+                      ? "border-2 border-blue-300 bg-white text-slate-900 shadow-xl"
+                      : "border border-white/10 bg-white/5"
+                  }`}
+                >
+                  <h3 className={`text-xl font-bold ${plan.featured ? "text-slate-900" : "text-white"}`}>
+                    {plan.name}
+                  </h3>
+                  <p
+                    className={`mt-3 text-4xl font-black ${plan.featured ? "text-blue-700" : "text-white"}`}
+                  >
+                    {plan.price}
+                    <span className={`text-sm font-normal ${plan.featured ? "text-slate-500" : "text-slate-300"}`}>
+                      /mo
+                    </span>
+                  </p>
+                  <ul className={`mt-6 space-y-3 text-sm ${plan.featured ? "text-slate-700" : "text-slate-200"}`}>
+                    {plan.features.map((feature) => (
+                      <li key={feature}>- {feature}</li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    className={`mt-7 w-full rounded-xl py-3 text-sm font-bold ${
+                      plan.featured
+                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                        : "bg-white text-brand-950 hover:bg-slate-100"
+                    }`}
+                  >
+                    {plan.cta}
+                  </button>
                 </div>
               ))}
             </div>

@@ -4,6 +4,21 @@ import { analyzeBill, buildAppealLetter, mockExtractLineItems } from "./analysis
 
 const app = new Hono();
 
+function getUserSubscription(c) {
+  // Placeholder until full Auth + Stripe webhook sync is wired.
+  const plan = c.req.header("x-subscription-plan") || "none";
+  const status = c.req.header("x-subscription-status") || "inactive";
+  const forceSubscription = c.env?.REQUIRE_SUBSCRIPTION === "true";
+  const isSubscribed = status === "active" || plan !== "none";
+
+  return {
+    id: c.req.header("x-user-id") || "anonymous",
+    plan,
+    status,
+    isSubscribed: forceSubscription ? isSubscribed : true
+  };
+}
+
 // 启用跨域
 app.use("/api/*", cors());
 
@@ -386,6 +401,11 @@ app.get("/api/health", (c) => {
 /** 处理图片上传分析 */
 app.post("/api/analyze", async (c) => {
   try {
+    const user = getUserSubscription(c);
+    if (!user.isSubscribed) {
+      return c.json({ error: "Subscription required", code: "PAYMENT_REQUIRED" }, 402);
+    }
+
     const body = await c.req.parseBody();
     const billFile = body["bill"]; // 这是一个 Blob 对象
     const demoScenario = body["demoScenario"] || "high";
@@ -409,6 +429,11 @@ app.post("/api/analyze", async (c) => {
 /** 处理 JSON 提交的分析 */
 app.post("/api/analyze-json", async (c) => {
   try {
+    const user = getUserSubscription(c);
+    if (!user.isSubscribed) {
+      return c.json({ error: "Subscription required", code: "PAYMENT_REQUIRED" }, 402);
+    }
+
     const body = await c.req.json();
     if (!body?.lineItems?.length) {
       return c.json({ error: "lineItems required" }, 400);
@@ -429,6 +454,11 @@ app.post("/api/analyze-json", async (c) => {
 /** 生成申诉信 */
 app.post("/api/appeal", async (c) => {
   try {
+    const user = getUserSubscription(c);
+    if (!user.isSubscribed) {
+      return c.json({ error: "Subscription required", code: "PAYMENT_REQUIRED" }, 402);
+    }
+
     const { analysis, patientName, insurerName } = await c.req.json();
     if (!analysis?.summary) {
       return c.json({ error: "analysis object required" }, 400);
@@ -438,6 +468,39 @@ app.post("/api/appeal", async (c) => {
   } catch (e) {
     return c.json({ error: "Appeal generation failed" }, 500);
   }
+});
+
+app.get("/api/subscription/plans", (c) => {
+  return c.json({
+    plans: [
+      {
+        id: "basic",
+        name: "Basic",
+        monthlyPriceUsd: 9.9,
+        features: ["Unlimited bill audits", "AI risk flags"]
+      },
+      {
+        id: "protector",
+        name: "Protector",
+        monthlyPriceUsd: 19.9,
+        features: [
+          "Everything in Basic",
+          "AI appeal letter generation",
+          "FICO credit guard monitoring"
+        ]
+      },
+      {
+        id: "family",
+        name: "Family Shield",
+        monthlyPriceUsd: 29.9,
+        features: [
+          "Family-wide coverage",
+          "Unlimited household bill audits",
+          "24/7 statute guidance support"
+        ]
+      }
+    ]
+  });
 });
 
 export default app;
