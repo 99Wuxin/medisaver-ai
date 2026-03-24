@@ -48,16 +48,38 @@ function SeverityPill({ severity }) {
   );
 }
 
+/** Shield + StatuteBill wordmark (SVG, no external image). */
 function BrandLogo({ className = "" }) {
   return (
-    <div className={`flex flex-col items-start ${className}`}>
-      <img
-        src="/medisaver-logo.png"
-        alt="StatuteBill"
-        className="h-10 w-auto sm:h-11"
-        width={180}
-        height={50}
-      />
+    <div className={`flex items-center gap-3 ${className}`}>
+      <svg
+        className="h-10 w-10 shrink-0 sm:h-11 sm:w-11"
+        viewBox="0 0 48 48"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+      >
+        <path
+          d="M24 4L8 12v12c0 9.5 6.5 17.5 16 20 9.5-2.5 16-10.5 16-20V12L24 4z"
+          fill="#1B365D"
+          stroke="#E2E8F0"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M24 14v20M14 24h20"
+          stroke="white"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+        />
+      </svg>
+      <div className="flex flex-col leading-tight">
+        <span className="font-display text-lg font-bold tracking-tight text-brand-950 sm:text-xl">
+          StatuteBill
+        </span>
+        <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-500">
+          The Settlement Shield
+        </span>
+      </div>
     </div>
   );
 }
@@ -67,25 +89,216 @@ const PLANS = [
     id: "basic",
     name: "Basic",
     price: "$9.9",
-    blurb: "Unlimited audits · AI risk flags",
-    cta: "Subscribe"
+    tagline: "Ongoing defense, not a one-off audit",
+    features: [
+      "Unlimited bill audits",
+      "AI risk flags on every upload",
+      "Monthly credit monitoring"
+    ],
+    cta: "Get protected"
   },
   {
     id: "protector",
     name: "Protector",
     price: "$19.9",
-    blurb: "Appeal letters · Credit guard",
-    cta: "Start trial",
+    tagline: "Full statute-backed toolkit",
+    features: [
+      "Everything in Basic",
+      "Auto-generated legal appeal letters",
+      "Digital Protection Card for care visits",
+      "FICO score defense & alerts"
+    ],
+    cta: "Get protected",
     featured: true
   },
   {
     id: "family",
-    name: "Family",
+    name: "Family Shield",
     price: "$29.9",
-    blurb: "Household · 24/7 guidance",
-    cta: "Subscribe"
+    tagline: "Cover everyone under one roof",
+    features: [
+      "Dependent coverage (household)",
+      "Pre-care price comparison",
+      "Shared case history & 24/7 statute guidance"
+    ],
+    cta: "Secure my bills"
   }
 ];
+
+function IconDoc({ className = "h-8 w-8" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M7 3h8l4 4v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path d="M15 3v4h4M8 12h8M8 16h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+const COMPLIANCE_PILLARS = [
+  {
+    id: "cfr180",
+    code: "45 CFR Part 180",
+    title: "Hospital Price Transparency",
+    body: "Hospitals must publish standard charges and machine-readable files—we compare your line items to those disclosures.",
+    Icon: IconDoc
+  },
+  {
+    id: "nsa",
+    code: "No Surprises Act",
+    title: "Balance-bill protections",
+    body: "42 U.S.C. § 300gg-131 et seq.—helps challenge non-consensual or out-of-network surprise charges where the law applies.",
+    Icon: IconDoc
+  },
+  {
+    id: "erisa",
+    code: "ERISA",
+    title: "Plan rights & appeals",
+    body: "29 U.S.C. §§ 1132–1133—statutory rights to benefits due and to appeal adverse benefit determinations on employer plans.",
+    Icon: IconDoc
+  }
+];
+
+function ComplianceShields() {
+  return (
+    <section id="compliance" className="mt-16 scroll-mt-20">
+      <h2 className="text-center font-display text-xl font-bold text-brand-950 sm:text-2xl">
+        Legal compliance you can cite
+      </h2>
+      <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-ink-600">
+        StatuteBill is built to map billing disputes to authorities already in our audit engine—not
+        generic “please lower my bill” emails.
+      </p>
+      <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        {COMPLIANCE_PILLARS.map(({ id, code, title, body, Icon }) => (
+          <div
+            key={id}
+            className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+          >
+            <div className="flex items-start gap-3">
+              <div className="rounded-lg bg-brand-950/10 p-2 text-brand-950">
+                <Icon className="h-7 w-7" />
+              </div>
+              <div>
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-wide text-brand-700">
+                  {code}
+                </p>
+                <h3 className="mt-1 font-semibold text-brand-950">{title}</h3>
+              </div>
+            </div>
+            <p className="mt-3 flex-1 text-xs leading-relaxed text-ink-600">{body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AppealLetterPreview() {
+  return (
+    <section
+      id="appeal-preview"
+      className="mt-14 scroll-mt-20 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+    >
+      <h2 className="font-display text-lg font-bold text-brand-950 sm:text-xl">
+        Formal Request for Review — preview
+      </h2>
+      <p className="mt-2 text-sm text-ink-600">
+        This is not a casual complaint. Outputs follow a{" "}
+        <strong className="text-brand-950">federal regulatory framework</strong> as a formal
+        request for review, adjustment, and correction—citing transparency, surprise-billing, and
+        plan-appeal rules where applicable.
+      </p>
+      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+        <div className="border-b border-slate-200 bg-white px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-ink-500">
+          Redacted excerpt · illustrative
+        </div>
+        <div className="max-h-[220px] overflow-y-auto p-4 font-mono text-[11px] leading-relaxed text-ink-800 sm:text-xs">
+          <p className="font-semibold text-brand-950">Subject: Formal request for review (federal & plan-based rights)</p>
+          <p className="mt-2 text-ink-600">
+            Dear Billing Integrity / Appeals Department,
+            <br />
+            <br />
+            I am exercising rights under applicable federal law and my plan—not requesting a
+            courtesy discount.
+          </p>
+          <p className="mt-3 text-ink-700">
+            <span className="text-ink-500">Federal framework referenced:</span>
+            <br />• Hospital price transparency —{" "}
+            <mark className="rounded bg-amber-200 px-0.5 text-brand-950">45 CFR Part 180</mark>{" "}
+            (standard charges; machine-readable file).
+            <br />• No Surprises Act — 42 U.S.C. § 300gg-131 et seq. (where applicable).
+            <br />• ERISA — 29 U.S.C. §§ 1132–1133; claims procedures —{" "}
+            <mark className="rounded bg-amber-200 px-0.5 text-brand-950">29 CFR § 2560.503-1</mark>.
+          </p>
+          <p className="mt-3 text-ink-500">
+            [Line-item reconciliation with CPT/HCPCS, benchmarks, and plan EOB cross-walk follows
+            in full letter…]
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function IconShield({ className = "h-5 w-5" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 3l8 4v6c0 5-3.5 9.5-8 10-4.5-.5-8-5-8-10V7l8-4z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconDatabase({ className = "h-5 w-5" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <ellipse cx="12" cy="6" rx="7" ry="3" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+function IconScale({ className = "h-5 w-5" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 3v18M6 9l12-4M6 15l12 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="6" cy="9" r="2" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="18" cy="5" r="2" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="18" cy="19" r="2" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+function ComplianceFooterBadges() {
+  const items = [
+    { label: "HIPAA Compliant", sub: "Privacy & PHI-safe handling", Icon: IconShield },
+    { label: "CMS Data Integrated", sub: "Federal Medicare benchmark feeds", Icon: IconDatabase },
+    { label: "Federal Statute Protected", sub: "Transparency & appeal authorities", Icon: IconScale }
+  ];
+  return (
+    <div className="mt-6 flex flex-wrap justify-center gap-4 border-t border-slate-200 pt-6">
+      {items.map(({ Icon, label, sub }) => (
+        <div
+          key={label}
+          className="flex min-w-[140px] flex-1 flex-col items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-center sm:min-w-[160px]"
+        >
+          <Icon className="mx-auto h-6 w-6 text-brand-700" />
+          <span className="mt-2 text-xs font-semibold text-brand-950">{label}</span>
+          <span className="mt-1 text-[10px] text-ink-500">{sub}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function App() {
   const [demoScenario, setDemoScenario] = useState("high");
@@ -212,6 +425,21 @@ export default function App() {
     }
   }, []);
 
+  const steps = [
+    {
+      title: "Upload",
+      body: "Snap a photo of your medical bill or EOB—we read the line items."
+    },
+    {
+      title: "Audit",
+      body: "Cross-check each line against CMS locality benchmarks and facility history where available."
+    },
+    {
+      title: "Appeal",
+      body: "Export a Formal Request for Review citing 45 CFR Part 180, NSA, ERISA, and plan procedures."
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
@@ -219,29 +447,35 @@ export default function App() {
           <a href="/" className="flex items-center gap-2">
             <BrandLogo />
           </a>
-          <a
-            href="#pricing"
-            className="text-sm font-medium text-brand-950 hover:text-brand-600"
-          >
-            Plans
-          </a>
+          <nav className="flex items-center gap-4 text-sm font-medium text-brand-950">
+            <a href="#compliance" className="hover:text-brand-600">
+              Compliance
+            </a>
+            <a href="#pricing" className="hover:text-brand-600">
+              Plans
+            </a>
+          </nav>
         </div>
       </header>
 
       <main className="mx-auto max-w-3xl px-4 pb-20 pt-10 sm:pt-14">
         <section className="text-center">
-          <h1 className="font-display text-3xl font-bold tracking-tight text-brand-950 sm:text-4xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
+            Federal Compliance Audit &amp; Billing Protection
+          </p>
+          <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-brand-950 sm:text-4xl">
             StatuteBill
           </h1>
-          <p className="mx-auto mt-3 max-w-md text-base text-ink-700">
-            Medical bill audits and appeal drafts—subscription pricing, not a one-off cut.
+          <p className="mx-auto mt-3 max-w-lg text-base text-ink-700">
+            We don&apos;t just ask for discounts; we enforce transparency laws—mapping your charges
+            to CMS benchmarks, hospital disclosures, and statute-backed appeal language.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <a
               href="#demo"
               className="rounded-xl bg-brand-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
             >
-              Try demo
+              Run compliance audit
             </a>
             <a
               href="#pricing"
@@ -250,14 +484,39 @@ export default function App() {
               View plans
             </a>
           </div>
+          <p className="mx-auto mt-3 max-w-lg text-xs leading-relaxed text-ink-500">
+            Illustrative audits reference{" "}
+            <span className="font-semibold text-brand-800">CMS-aligned benchmarks</span>—your
+            outcomes depend on your plan, provider, and facts.
+          </p>
+        </section>
+
+        <section id="how" className="mt-12">
+          <h2 className="text-center text-sm font-semibold uppercase tracking-wide text-ink-500">
+            How it works
+          </h2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            {steps.map((s, i) => (
+              <div
+                key={s.title}
+                className="rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm"
+              >
+                <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-brand-950 text-sm font-bold text-white">
+                  {i + 1}
+                </div>
+                <h3 className="mt-3 font-semibold text-brand-950">{s.title}</h3>
+                <p className="mt-2 text-xs leading-relaxed text-ink-600">{s.body}</p>
+              </div>
+            ))}
+          </div>
         </section>
 
         <section id="demo" className="mt-14">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
-            Demo
+            Compliance audit
           </h2>
           <p className="mt-1 text-sm text-ink-600">
-            Simulated parse—upload optional. Pick a sample, then run or drop a file.
+            Upload optional—pick a sample scenario, drop a bill, or run the built-in illustration.
           </p>
 
           <div className="mt-4 flex gap-2">
@@ -308,7 +567,7 @@ export default function App() {
             onClick={runDemo}
             className="mt-3 w-full rounded-xl bg-brand-950 py-3 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
           >
-            {loading ? "Running…" : "Run demo (no file)"}
+            {loading ? "Running…" : "Run audit (no file)"}
           </button>
 
           {error && (
@@ -327,28 +586,65 @@ export default function App() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-ink-500">Est. gap (demo)</p>
+                  <p className="text-xs text-ink-500">Potential overcharge (est.)</p>
                   <p className="text-xl font-bold text-brand-700">
                     {fmt(result.analysis.summary.potentialSavings)}
                   </p>
-                  <p className="text-xs text-ink-500">~{savingsPct}%</p>
+                  <p className="text-xs text-ink-500">~{savingsPct}% of billed</p>
                 </div>
+              </div>
+
+              <div className="rounded-xl border border-brand-100 bg-brand-50/80 p-3 text-xs leading-relaxed text-ink-800">
+                <p className="font-semibold text-brand-950">Authoritative price reference (CMS)</p>
+                <p className="mt-1">
+                  Benchmarks in this audit reference{" "}
+                  <strong>CMS (Centers for Medicare &amp; Medicaid Services)</strong> published
+                  locality market fair pricing and fee schedules aligned to your service codes
+                  {result.analysis.summary.locality
+                    ? ` (${result.analysis.summary.locality})`
+                    : ""}
+                  . They are used to test whether your billed amounts sit outside defensible ranges—not
+                  as a guarantee of payment.
+                </p>
               </div>
 
               {result.analysis.flags.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-ink-500">Flagged lines</p>
+                  <p className="text-xs font-medium text-ink-500">Flagged lines &amp; sources</p>
                   <ul className="mt-2 divide-y divide-slate-100">
-                    {result.analysis.flags.slice(0, 6).map((f) => (
-                      <li key={f.code} className="flex items-start justify-between gap-3 py-2 text-sm">
-                        <div className="min-w-0">
-                          <span className="font-mono text-xs text-ink-600">{f.code}</span>
-                          <p className="truncate text-ink-800">{f.description}</p>
+                    {result.analysis.flags.slice(0, 6).map((f, i) => (
+                      <li key={`${f.code}-${i}`} className="py-3 text-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <span className="font-mono text-xs text-ink-600">{f.code}</span>
+                            <p className="text-ink-800">{f.description}</p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="font-medium">{fmt(f.billed)}</p>
+                            <SeverityPill severity={f.severity} />
+                          </div>
                         </div>
-                        <div className="shrink-0 text-right">
-                          <p className="font-medium">{fmt(f.billed)}</p>
-                          <SeverityPill severity={f.severity} />
-                        </div>
+                        {f.cmsBenchmarkSource && (
+                          <p className="mt-2 text-xs leading-relaxed text-ink-600">
+                            <span className="font-medium text-brand-950">CMS benchmark: </span>
+                            This line is compared to{" "}
+                            <span className="font-medium">{f.cmsBenchmarkSource}</span>—a CMS-published
+                            reference for fair market pricing in this category.
+                          </p>
+                        )}
+                        {f.locality && (
+                          <p className="mt-1 text-[11px] text-ink-500">{f.locality}</p>
+                        )}
+                        {f.hospitalHistorical && (
+                          <p className="mt-2 text-xs leading-relaxed text-amber-900">
+                            <span className="font-medium">Hospital historical distribution: </span>
+                            At {f.hospitalHistorical.facilityName}, the 25th percentile billed for
+                            this code was {fmt(f.hospitalHistorical.p25)} (median billed ~{" "}
+                            {fmt(f.hospitalHistorical.medianBilled)}). Your charge of {fmt(f.billed)}{" "}
+                            shows a <strong>significant premium</strong> versus that facility peer
+                            band—use with your itemized detail and EOB.
+                          </p>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -357,13 +653,13 @@ export default function App() {
 
               {topCitations.length > 0 && (
                 <div className="rounded-xl bg-slate-50 p-3 text-xs text-ink-700">
-                  <span className="font-medium text-brand-950">Citations (demo): </span>
+                  <span className="font-medium text-brand-950">Statutory citations: </span>
                   {topCitations.map((c) => c.reference).join(" · ")}
                 </div>
               )}
 
               <div className="border-t border-slate-100 pt-4">
-                <p className="text-xs font-medium text-ink-500">Appeal draft</p>
+                <p className="text-xs font-medium text-ink-500">Formal Request for Review (draft)</p>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   <input
                     className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
@@ -384,7 +680,7 @@ export default function App() {
                   onClick={generateLetter}
                   className="mt-2 rounded-lg bg-brand-950 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
                 >
-                  {letterLoading ? "Generating…" : "Generate letter"}
+                  {letterLoading ? "Generating…" : "Generate Formal Request for Review"}
                 </button>
                 {letter && (
                   <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-900 p-3 text-xs text-slate-100">
@@ -394,14 +690,18 @@ export default function App() {
               </div>
             </div>
           )}
+
         </section>
+
+        <ComplianceShields />
+        <AppealLetterPreview />
 
         <section id="pricing" className="mt-16 border-t border-slate-200 pt-14">
           <h2 className="text-center font-display text-2xl font-bold text-brand-950">
             Plans
           </h2>
-          <p className="mx-auto mt-2 max-w-sm text-center text-sm text-ink-600">
-            Monthly subscription. Cancel anytime in the Stripe portal.
+          <p className="mx-auto mt-2 max-w-md text-center text-sm text-ink-600">
+            Keep protection on month after month—cancel anytime in the Stripe customer portal.
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {PLANS.map((plan) => (
@@ -418,18 +718,26 @@ export default function App() {
                   {plan.price}
                   <span className="text-sm font-normal text-ink-500">/mo</span>
                 </p>
-                <p className="mt-2 flex-1 text-sm text-ink-600">{plan.blurb}</p>
+                <p className="mt-1 text-xs text-ink-500">{plan.tagline}</p>
+                <ul className="mt-4 flex-1 space-y-2 text-sm text-ink-700">
+                  {plan.features.map((line) => (
+                    <li key={line} className="flex gap-2">
+                      <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand-600" />
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
                 <button
                   type="button"
                   onClick={() => startSubscription(plan.id)}
                   disabled={billingLoadingPlan !== null}
-                  className={`mt-4 w-full rounded-xl py-2.5 text-sm font-bold ${
+                  className={`mt-5 w-full rounded-xl py-2.5 text-sm font-bold ${
                     plan.featured
                       ? "bg-blue-600 text-white hover:bg-blue-700"
                       : "bg-brand-950 text-white hover:bg-brand-800"
                   } disabled:opacity-60`}
                 >
-                  {billingLoadingPlan === plan.id ? "Opening…" : plan.cta}
+                  {billingLoadingPlan === plan.id ? "Opening checkout…" : plan.cta}
                 </button>
               </div>
             ))}
@@ -437,8 +745,25 @@ export default function App() {
         </section>
       </main>
 
-      <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-ink-500">
-        StatuteBill · Demo only, not legal advice
+      <footer className="border-t border-slate-200 bg-slate-100/80">
+        <div className="mx-auto max-w-3xl px-4 py-8">
+          <div className="rounded-xl border border-slate-200 bg-white px-5 py-5 text-center shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+              Important notice
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-ink-700">
+              StatuteBill provides educational tools and illustrative drafts based on publicly
+              available rules and benchmarks. It is{" "}
+              <strong className="font-semibold text-brand-950">not</strong> legal, medical, or
+              insurance advice. Outcomes depend on your plan, provider, and facts—consult a
+              licensed professional before relying on any letter or filing.
+            </p>
+            <p className="mt-3 text-xs text-ink-500">
+              Sample data shown for product illustration only—not a prediction of your outcome.
+            </p>
+            <ComplianceFooterBadges />
+          </div>
+        </div>
       </footer>
     </div>
   );

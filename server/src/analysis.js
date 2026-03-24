@@ -80,6 +80,15 @@ export function analyzeBill(parsed) {
         reasonableEstimate: Math.round(reasonable * 100) / 100,
         overchargeEstimate: Math.round(Math.max(0, delta) * 100) / 100,
         severity,
+        cmsBenchmarkSource: ref.source,
+        locality: LOCALITY,
+        hospitalHistorical: hist
+          ? {
+              facilityName,
+              p25: hist.p25,
+              medianBilled: hist.medianBilled
+            }
+          : null,
         statutoryCitations: statutes,
         legalBasis: [
           `Federal transparency & patient-protection framework: cite posted standard charges and Good Faith Estimate / plan documents where applicable (45 CFR Part 180; NSA at 42 U.S.C. § 300gg-131 et seq.; ERISA claims procedures at 29 U.S.C. §§ 1132–1133).`,
