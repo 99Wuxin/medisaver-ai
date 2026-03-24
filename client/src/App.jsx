@@ -21,6 +21,25 @@ async function fetchAppeal(analysis, patientName, insurerName) {
   return res.json();
 }
 
+async function createCheckoutSession(planId) {
+  const customerEmail = window.prompt(
+    "Enter your billing email for Stripe checkout:",
+    "you@example.com"
+  );
+  if (!customerEmail) return null;
+
+  const res = await fetch("/api/billing/checkout-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ planId, customerEmail })
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.error || "Could not start Stripe checkout.");
+  }
+  return data;
+}
+
 function SeverityPill({ severity }) {
   const map = {
     high: "bg-red-100 text-red-800 border-red-200",
@@ -60,6 +79,7 @@ export default function App() {
   const [insurerName, setInsurerName] = useState("Sample Health Plan");
   const [letter, setLetter] = useState(null);
   const [letterLoading, setLetterLoading] = useState(false);
+  const [billingLoadingPlan, setBillingLoadingPlan] = useState(null);
 
   const runDemo = useCallback(async () => {
     setError(null);
@@ -159,6 +179,21 @@ export default function App() {
     }
     return out;
   }, [result]);
+
+  const startSubscription = useCallback(async (planId) => {
+    setError(null);
+    setBillingLoadingPlan(planId);
+    try {
+      const session = await createCheckoutSession(planId);
+      if (session?.url) {
+        window.location.href = session.url;
+      }
+    } catch (e) {
+      setError(e.message || "Unable to start checkout.");
+    } finally {
+      setBillingLoadingPlan(null);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-brand-50 via-white to-slate-50">
@@ -555,6 +590,7 @@ export default function App() {
             <div className="mt-10 grid gap-6 md:grid-cols-3">
               {[
                 {
+                  id: "basic",
                   name: "Basic",
                   price: "$9.9",
                   features: [
@@ -565,6 +601,7 @@ export default function App() {
                   cta: "Start Basic"
                 },
                 {
+                  id: "protector",
                   name: "Protector",
                   price: "$19.9",
                   features: [
@@ -576,6 +613,7 @@ export default function App() {
                   featured: true
                 },
                 {
+                  id: "family",
                   name: "Family Shield",
                   price: "$29.9",
                   features: [
@@ -612,13 +650,17 @@ export default function App() {
                   </ul>
                   <button
                     type="button"
+                    onClick={() => startSubscription(plan.id)}
+                    disabled={billingLoadingPlan !== null}
                     className={`mt-7 w-full rounded-xl py-3 text-sm font-bold ${
                       plan.featured
                         ? "bg-blue-600 text-white hover:bg-blue-700"
                         : "bg-white text-brand-950 hover:bg-slate-100"
-                    }`}
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
                   >
-                    {plan.cta}
+                    {billingLoadingPlan === plan.id
+                      ? "Redirecting to checkout..."
+                      : plan.cta}
                   </button>
                 </div>
               ))}

@@ -4,19 +4,100 @@ import { analyzeBill, buildAppealLetter, mockExtractLineItems } from "./analysis
 
 const app = new Hono();
 
-function getUserSubscription(c) {
-  // Placeholder until full Auth + Stripe webhook sync is wired.
-  const plan = c.req.header("x-subscription-plan") || "none";
-  const status = c.req.header("x-subscription-status") || "inactive";
-  const forceSubscription = c.env?.REQUIRE_SUBSCRIPTION === "true";
-  const isSubscribed = status === "active" || plan !== "none";
+function toFormBody(payload) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(payload)) {
+    if (value !== undefined && value !== null && value !== "") {
+      params.append(key, String(value));
+    }
+  }
+  return params.toString();
+}
 
-  return {
-    id: c.req.header("x-user-id") || "anonymous",
-    plan,
-    status,
-    isSubscribed: forceSubscription ? isSubscribed : true
+async function stripeRequest(c, path, payload) {
+  const stripeSecretKey = c.env?.STRIPE_SECRET_KEY;
+  if (!stripeSecretKey) {
+    throw new Error("STRIPE_NOT_CONFIGURED");
+  }
+
+  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${stripeSecretKey}`,
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: toFormBody(payload)
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const msg = data?.error?.message || "Stripe request failed";
+    throw new Error(msg);
+  }
+  return data;
+}
+
+function getStripePriceId(c, planId, explicitPriceId) {
+  if (explicitPriceId) return explicitPriceId;
+  const map = {
+    basic: c.env?.STRIPE_PRICE_BASIC,
+    protector: c.env?.STRIPE_PRICE_PROTECTOR,
+    family: c.env?.STRIPE_PRICE_FAMILY
   };
+  return map[planId] || null;
+}
+
+async function getUserSubscription(c) {
+  const forceSubscription = c.env?.REQUIRE_SUBSCRIPTION === "true";
+  const localPlan = c.req.header("x-subscription-plan") || "none";
+  const localStatus = c.req.header("x-subscription-status") || "inactive";
+  const stripeCustomerId = c.req.header("x-stripe-customer-id");
+
+  // Temporary local override for dev/demo.
+  if (!forceSubscription) {
+    return {
+      id: c.req.header("x-user-id") || "anonymous",
+      plan: localPlan,
+      status: localStatus,
+      stripeCustomerId: stripeCustomerId || null,
+      isSubscribed: true
+    };
+  }
+
+  if (!stripeCustomerId) {
+    return {
+      id: c.req.header("x-user-id") || "anonymous",
+      plan: localPlan,
+      status: "inactive",
+      stripeCustomerId: null,
+      isSubscribed: false
+    };
+  }
+
+  try {
+    const stripe = await stripeRequest(c, "subscriptions", {
+      customer: stripeCustomerId,
+      status: "all",
+      limit: 5
+    });
+    const active = (stripe.data || []).find((s) =>
+      ["active", "trialing", "past_due"].includes(s.status)
+    );
+    return {
+      id: c.req.header("x-user-id") || "anonymous",
+      plan: active?.items?.data?.[0]?.price?.id || "none",
+      status: active?.status || "inactive",
+      stripeCustomerId,
+      isSubscribed: Boolean(active)
+    };
+  } catch {
+    return {
+      id: c.req.header("x-user-id") || "anonymous",
+      plan: "none",
+      status: "inactive",
+      stripeCustomerId,
+      isSubscribed: false
+    };
+  }
 }
 
 // 启用跨域
@@ -401,7 +482,7 @@ app.get("/api/health", (c) => {
 /** 处理图片上传分析 */
 app.post("/api/analyze", async (c) => {
   try {
-    const user = getUserSubscription(c);
+    const user = await getUserSubscription(c);
     if (!user.isSubscribed) {
       return c.json({ error: "Subscription required", code: "PAYMENT_REQUIRED" }, 402);
     }
@@ -429,7 +510,7 @@ app.post("/api/analyze", async (c) => {
 /** 处理 JSON 提交的分析 */
 app.post("/api/analyze-json", async (c) => {
   try {
-    const user = getUserSubscription(c);
+    const user = await getUserSubscription(c);
     if (!user.isSubscribed) {
       return c.json({ error: "Subscription required", code: "PAYMENT_REQUIRED" }, 402);
     }
@@ -454,7 +535,7 @@ app.post("/api/analyze-json", async (c) => {
 /** 生成申诉信 */
 app.post("/api/appeal", async (c) => {
   try {
-    const user = getUserSubscription(c);
+    const user = await getUserSubscription(c);
     if (!user.isSubscribed) {
       return c.json({ error: "Subscription required", code: "PAYMENT_REQUIRED" }, 402);
     }
@@ -468,6 +549,71 @@ app.post("/api/appeal", async (c) => {
   } catch (e) {
     return c.json({ error: "Appeal generation failed" }, 500);
   }
+});
+
+app.post("/api/billing/checkout-session", async (c) => {
+  try {
+    const body = await c.req.json();
+    const origin = c.req.header("origin") || "https://statutebill.com";
+    const successUrl = body.successUrl || `${origin}/billing/success`;
+    const cancelUrl = body.cancelUrl || `${origin}/billing/cancel`;
+
+    const priceId = getStripePriceId(c, body.planId, body.priceId);
+    if (!priceId) {
+      return c.json(
+        {
+          error: "priceId required",
+          hint: "Provide priceId in body, or configure STRIPE_PRICE_BASIC / STRIPE_PRICE_PROTECTOR / STRIPE_PRICE_FAMILY."
+        },
+        400
+      );
+    }
+
+    const session = await stripeRequest(c, "checkout/sessions", {
+      mode: "subscription",
+      "line_items[0][price]": priceId,
+      "line_items[0][quantity]": 1,
+      customer: body.customerId,
+      customer_email: body.customerEmail,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      allow_promotion_codes: true
+    });
+
+    return c.json({ id: session.id, url: session.url });
+  } catch (e) {
+    return c.json({ error: e.message || "Checkout session failed" }, 500);
+  }
+});
+
+app.post("/api/billing/portal-session", async (c) => {
+  try {
+    const body = await c.req.json();
+    const origin = c.req.header("origin") || "https://statutebill.com";
+    const returnUrl = body.returnUrl || `${origin}/account`;
+
+    if (!body.customerId) {
+      return c.json({ error: "customerId required" }, 400);
+    }
+
+    const session = await stripeRequest(c, "billing_portal/sessions", {
+      customer: body.customerId,
+      return_url: returnUrl
+    });
+    return c.json({ url: session.url });
+  } catch (e) {
+    return c.json({ error: e.message || "Portal session failed" }, 500);
+  }
+});
+
+app.get("/api/billing/subscription-status", async (c) => {
+  const user = await getUserSubscription(c);
+  return c.json({
+    isSubscribed: user.isSubscribed,
+    status: user.status,
+    plan: user.plan,
+    stripeCustomerId: user.stripeCustomerId
+  });
 });
 
 app.get("/api/subscription/plans", (c) => {
