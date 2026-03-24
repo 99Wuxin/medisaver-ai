@@ -156,6 +156,67 @@ app.get("/", (c) => {
       .api a:hover {
         text-decoration: underline;
       }
+      .demo-box {
+        background: #0b1220;
+        color: #dbeafe;
+        border-radius: 12px;
+        padding: 14px;
+        margin-top: 12px;
+      }
+      .demo-box textarea {
+        width: 100%;
+        min-height: 96px;
+        border-radius: 8px;
+        border: 1px solid #334155;
+        background: #111827;
+        color: #e2e8f0;
+        padding: 10px;
+        resize: vertical;
+        box-sizing: border-box;
+      }
+      .demo-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        border: 0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .btn-primary {
+        background: #22c55e;
+        color: #052e16;
+      }
+      .btn-secondary {
+        background: #1e293b;
+        color: #e2e8f0;
+      }
+      .json {
+        margin-top: 12px;
+        border: 1px solid #1e293b;
+        border-radius: 10px;
+        background: #020617;
+        color: #93c5fd;
+        padding: 10px;
+        overflow-x: auto;
+        white-space: pre;
+        font-size: 12px;
+      }
+      .result-card {
+        margin-top: 12px;
+        background: linear-gradient(135deg, #052e16, #14532d);
+        color: #dcfce7;
+        border-radius: 12px;
+        padding: 14px;
+        border: 1px solid #166534;
+      }
+      .result-card strong {
+        color: #86efac;
+      }
     </style>
   </head>
   <body>
@@ -209,6 +270,16 @@ app.get("/", (c) => {
       <section id="experience" class="section">
         <h2 data-i18n="expTitle">立即体验</h2>
         <p data-i18n="expDesc">你可以先通过演示端体验账单分析流程，随后接入正式上传与申诉能力。</p>
+        <div class="demo-box">
+          <p class="muted" data-i18n="demoHint">模拟：用户上传了混乱急诊账单照片，系统将图片 + Prompt 发给模型并返回结构化 JSON。</p>
+          <textarea id="demoInput">叫了一次救护车收了3000刀，缝了两针收了1500刀，急诊观察2小时收了2400刀。</textarea>
+          <div class="demo-actions">
+            <button id="runDemo" class="btn btn-primary" type="button" data-i18n="runDemo">生成专业砍价报告</button>
+            <button id="fillDemo" class="btn btn-secondary" type="button" data-i18n="fillDemo">换一组离谱收费</button>
+          </div>
+          <div id="demoJson" class="json" hidden></div>
+          <div id="demoCard" class="result-card" hidden></div>
+        </div>
         <div class="api">
           <a href="/api/health" data-i18n="expLink">查看服务状态 /api/health</a>
         </div>
@@ -249,6 +320,9 @@ app.get("/", (c) => {
           fit3: "希望先完成自助初筛，再决定是否咨询专业机构的人群。",
           expTitle: "立即体验",
           expDesc: "你可以先通过演示端体验账单分析流程，随后接入正式上传与申诉能力。",
+          demoHint: "模拟：用户上传了混乱急诊账单照片，系统将图片 + Prompt 发给模型并返回结构化 JSON。",
+          runDemo: "生成专业砍价报告",
+          fillDemo: "换一组离谱收费",
           expLink: "查看服务状态 /api/health",
           privacyTitle: "隐私与安全",
           privacyDesc: "我们仅在功能所需范围内处理数据，并持续优化最小化存储策略与访问控制。请勿上传与分析无关的敏感信息。",
@@ -272,6 +346,9 @@ app.get("/", (c) => {
           fit3: "People who want self-service screening before contacting professionals.",
           expTitle: "Get Started",
           expDesc: "Start with a demo workflow, then connect full upload and appeal capabilities.",
+          demoHint: "Demo flow: a messy ER bill photo is sent to a model with a compliance-audit system prompt, then rendered from JSON.",
+          runDemo: "Generate Negotiation Report",
+          fillDemo: "Try Another Extreme Case",
           expLink: "Check service status at /api/health",
           privacyTitle: "Privacy & Security",
           privacyDesc: "We process data only as required for core features and keep improving minimal-retention and access-control safeguards. Avoid uploading unrelated sensitive data.",
@@ -283,6 +360,18 @@ app.get("/", (c) => {
 
       const btnZh = document.getElementById("btn-zh");
       const btnEn = document.getElementById("btn-en");
+      const runDemoBtn = document.getElementById("runDemo");
+      const fillDemoBtn = document.getElementById("fillDemo");
+      const demoInput = document.getElementById("demoInput");
+      const demoJson = document.getElementById("demoJson");
+      const demoCard = document.getElementById("demoCard");
+
+      const crazyCases = [
+        "叫了一次救护车收了3000刀，缝了两针收了1500刀，急诊观察2小时收了2400刀。",
+        "CT 头部扫描收了4200刀，普通止痛针一针收了460刀，一次基础验血收了980刀。",
+        "急诊挂号费1200刀，5分钟医生问诊收了900刀，纱布和消毒收了380刀。"
+      ];
+      let caseIndex = 0;
 
       function applyLang(lang) {
         document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
@@ -296,6 +385,54 @@ app.get("/", (c) => {
 
       btnZh.addEventListener("click", () => applyLang("zh"));
       btnEn.addEventListener("click", () => applyLang("en"));
+
+      fillDemoBtn.addEventListener("click", () => {
+        caseIndex = (caseIndex + 1) % crazyCases.length;
+        demoInput.value = crazyCases[caseIndex];
+      });
+
+      runDemoBtn.addEventListener("click", () => {
+        const text = demoInput.value.trim();
+        const baseTotal = Math.max(2600, Math.min(9800, text.length * 42));
+        const estimatedSavings = Math.round(baseTotal * 0.42);
+        const premium = (1.8 + (text.length % 8) * 0.22).toFixed(1);
+        const report = {
+          original_total_usd: baseTotal,
+          overcharge_items: [
+            {
+              cpt_code: "99285",
+              premium_multiplier: premium,
+              compliance_reason: "Charge materially exceeds 2026 CMS benchmark for comparable ER complexity and lacks clear supporting documentation."
+            },
+            {
+              cpt_code: "12001",
+              premium_multiplier: "2.4",
+              compliance_reason: "Simple laceration repair appears priced as higher-acuity service without matching procedure notes."
+            }
+          ],
+          estimated_savings_usd: estimatedSavings,
+          legal_leverage: [
+            "Request itemized bill and coding rationale under patient billing transparency rules.",
+            "Dispute upcoding and ask for coding review with documentation.",
+            "Escalate with insurer appeal citing parity with CMS fair-market reference."
+          ],
+          generated_from_user_text: text
+        };
+
+        demoJson.hidden = false;
+        demoCard.hidden = false;
+        demoJson.textContent = JSON.stringify(report, null, 2);
+        demoCard.innerHTML =
+          '<div><strong>' +
+          (document.documentElement.lang === "en" ? "Potential savings: " : "预计可省金额：") +
+          "$" +
+          estimatedSavings +
+          '</strong></div><div style="margin-top:6px;">' +
+          (document.documentElement.lang === "en"
+            ? "Detected likely upcoding. Tap to generate a one-click appeal package."
+            : "检测到疑似高码计费。可一键生成申诉材料并用于和保险方谈判。") +
+          "</div>";
+      });
     </script>
   </body>
 </html>`;
