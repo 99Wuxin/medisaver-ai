@@ -621,11 +621,11 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-50 via-slate-50 to-indigo-50">
       <header className="border-b border-slate-200/80 bg-white/85 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
           <a href="/" className="flex items-center gap-2">
             <BrandLogo />
           </a>
-          <nav className="flex items-center gap-4 text-sm font-medium text-brand-950">
+          <nav className="flex items-center gap-6 text-sm font-medium text-brand-950">
             <a href="#compliance" className="transition-colors hover:text-blue-600">
               Compliance
             </a>
@@ -636,19 +636,19 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 pb-20 pt-10 sm:pt-14">
+      <main className="mx-auto max-w-6xl px-5 pb-24 pt-12 sm:px-8 sm:pt-16">
         <section className="text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
             Federal Compliance Audit &amp; Billing Protection
           </p>
-          <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-brand-950 sm:text-4xl">
+          <h1 className="mx-auto mt-3 max-w-4xl font-display text-4xl font-bold tracking-tight text-brand-950 sm:text-6xl">
             StatuteBill
           </h1>
-          <p className="mx-auto mt-3 max-w-lg text-base text-ink-700">
+          <p className="mx-auto mt-4 max-w-3xl text-lg leading-relaxed text-ink-700">
             We don&apos;t just ask for discounts; we enforce transparency laws—mapping your charges
             to CMS benchmarks, hospital disclosures, and statute-backed appeal language.
           </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
             <a
               href="#demo"
               className="rounded-xl bg-gradient-to-r from-brand-950 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:from-brand-900 hover:to-blue-600"
@@ -662,40 +662,40 @@ export default function App() {
               View plans
             </a>
           </div>
-          <p className="mx-auto mt-3 max-w-lg text-xs leading-relaxed text-ink-500">
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-ink-500">
             Illustrative audits reference{" "}
             <span className="font-semibold text-brand-800">CMS-aligned benchmarks</span>—your
             outcomes depend on your plan, provider, and facts.
           </p>
         </section>
 
-        <ScrollReveal as="section" className="mt-8">
-          <div className="grid gap-3 sm:grid-cols-3">
+        <ScrollReveal as="section" className="mt-12">
+          <div className="grid gap-4 sm:grid-cols-3">
             {TRUST_STATS.map((s, idx) => (
               <ScrollReveal
                 as="div"
                 key={s.label}
                 delayMs={80 * idx}
-                className="rounded-2xl border border-slate-200 bg-white/90 p-4 text-center shadow-sm"
+                className="rounded-3xl border border-slate-200 bg-white/90 p-6 text-center shadow-sm"
               >
                 <p className="text-[11px] uppercase tracking-wide text-ink-500">{s.label}</p>
-                <p className="mt-2 text-2xl font-black text-brand-950">{s.value}</p>
+                <p className="mt-3 text-3xl font-black text-brand-950">{s.value}</p>
               </ScrollReveal>
             ))}
           </div>
         </ScrollReveal>
 
-        <ScrollReveal as="section" id="how" className="mt-12">
+        <ScrollReveal as="section" id="how" className="mt-16">
           <h2 className="text-center text-sm font-semibold uppercase tracking-wide text-ink-500">
             How it works
           </h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="mt-7 grid gap-4 sm:grid-cols-3">
             {steps.map((s, i) => (
               <ScrollReveal
                 as="div"
                 key={s.title}
                 delayMs={80 * i}
-                className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-sky-50 p-4 text-center shadow-sm"
+                className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-sky-50 p-6 text-center shadow-sm"
               >
                 <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-brand-950 text-sm font-bold text-white">
                   {i + 1}
@@ -707,7 +707,7 @@ export default function App() {
           </div>
         </ScrollReveal>
 
-        <section id="demo" className="mt-14">
+        <section id="demo" className="mt-20 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
             Compliance audit
           </h2>
@@ -912,7 +912,7 @@ export default function App() {
           <AppealLetterPreview />
         </ScrollReveal>
 
-        <ScrollReveal as="section" id="pricing" className="mt-16 border-t border-slate-200/80 pt-14">
+        <ScrollReveal as="section" id="pricing" className="mt-24 border-t border-slate-200/80 pt-16">
           <div className="mb-6 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-5">
             <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">Single bill option</p>
             <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -992,7 +992,7 @@ export default function App() {
       </main>
 
       <footer className="border-t border-slate-200/80 bg-gradient-to-r from-slate-100/80 to-indigo-100/70">
-        <div className="mx-auto max-w-3xl px-4 py-8">
+        <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
           <div className="rounded-xl border border-slate-200 bg-white px-5 py-5 text-center shadow-sm">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
               Important notice
