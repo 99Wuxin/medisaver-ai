@@ -41,7 +41,8 @@ function getStripePriceId(c, planId, explicitPriceId) {
   const map = {
     basic: c.env?.STRIPE_PRICE_BASIC,
     protector: c.env?.STRIPE_PRICE_PROTECTOR,
-    family: c.env?.STRIPE_PRICE_FAMILY
+    family: c.env?.STRIPE_PRICE_FAMILY,
+    "one-off": c.env?.STRIPE_PRICE_ONE_OFF
   };
   return map[planId] || null;
 }
@@ -228,14 +229,19 @@ app.post("/api/billing/checkout-session", async (c) => {
       return c.json(
         {
           error: "priceId required",
-          hint: "Provide priceId in body, or configure STRIPE_PRICE_BASIC / STRIPE_PRICE_PROTECTOR / STRIPE_PRICE_FAMILY (each must be a different price_... from Stripe)."
+          hint:
+            planId === "one-off"
+              ? "Configure STRIPE_PRICE_ONE_OFF with a one-time payment price_... from Stripe, or pass priceId in the request body."
+              : "Provide priceId in body, or configure STRIPE_PRICE_BASIC / STRIPE_PRICE_PROTECTOR / STRIPE_PRICE_FAMILY (each must be a different price_... from Stripe)."
         },
         400
       );
     }
 
+    const isOneOffPayment = planId === "one-off";
+
     const sessionPayload = {
-      mode: "subscription",
+      mode: isOneOffPayment ? "payment" : "subscription",
       "line_items[0][price]": priceId,
       "line_items[0][quantity]": 1,
       "payment_method_types[0]": "card",

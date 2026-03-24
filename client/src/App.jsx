@@ -34,6 +34,66 @@ async function createCheckoutSession(planId) {
   return data;
 }
 
+function InfoTooltip({ explanation }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex align-middle">
+      <button
+        type="button"
+        className="ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-[11px] font-bold text-slate-600 shadow-sm transition hover:border-blue-300 hover:text-blue-700"
+        aria-expanded={open}
+        aria-label="What this means"
+        onClick={() => setOpen((v) => !v)}
+      >
+        ?
+      </button>
+      {open ? (
+        <span
+          className="absolute left-1/2 top-full z-30 mt-2 w-[min(18rem,calc(100vw-2.5rem))] -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-2.5 text-left text-[11px] leading-relaxed text-ink-600 shadow-lg"
+          role="tooltip"
+        >
+          {explanation}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function IconCamera({ className = "h-10 w-10" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 7h4l1.5-2h5L16 7h4a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="13" r="3.5" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+function IconLockSmall({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M8 11V8a4 4 0 018 0v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconPhoneBill({ className = "h-16 w-16" }) {
+  return (
+    <svg className={className} viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <rect x="12" y="8" width="28" height="48" rx="4" stroke="currentColor" strokeWidth="2" />
+      <circle cx="26" cy="52" r="2" fill="currentColor" />
+      <path d="M18 16h16M18 22h20M18 28h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M38 24l14-8v36l-14-8" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <rect x="44" y="30" width="12" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
 function ScrollReveal({ as: Tag = "div", className = "", delayMs = 0, children, ...props }) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
@@ -133,12 +193,13 @@ const PLANS = [
     id: "protector",
     name: "Protector",
     price: "$19.9",
-    tagline: "Full statute-backed toolkit",
+    tagline: "Full statute-backed toolkit — best for chronic care & multiple bills",
     features: [
       "Everything in Basic",
       "Auto-generated legal appeal letters",
       "Digital Protection Card for care visits",
-      "FICO score defense & alerts"
+      "FICO score defense & alerts",
+      "3-month minimum, then cancel anytime in Stripe"
     ],
     cta: "Get protected",
     featured: true
@@ -159,7 +220,12 @@ const PLANS = [
 
 const TRUST_STATS = [
   { label: "Average potential savings identified", value: "$1,870" },
-  { label: "Statute / regulation coverage", value: "45+ hooks" },
+  {
+    label: "Legal violation triggers",
+    value: "45+",
+    tooltip:
+      "We automatically scan for 45+ kinds of billing issues tied to federal rules—like unbundling, duplicate lines, inflated imaging bundles, and transparency gaps—not generic “discount” guesses."
+  },
   { label: "Illustrative audit confidence checks", value: "98%" }
 ];
 
@@ -168,19 +234,25 @@ const SUCCESS_CASES = [
     title: "Emergency room balance-bill dispute",
     amount: "$2,400 reduced",
     basis: "No Surprises Act (42 U.S.C. § 300gg-131)",
-    note: "User challenged non-consensual out-of-network charges with statute-cited letter."
+    note: "User challenged non-consensual out-of-network charges with statute-cited letter.",
+    resolvedIn: "Resolved in 18 days",
+    effort: "1 formal letter"
   },
   {
     title: "Imaging overcharge reconciliation",
     amount: "$1,150 adjusted",
     basis: "45 CFR Part 180 transparency request",
-    note: "Facility provided corrected itemized charges after formal CPT-level reconciliation demand."
+    note: "Facility provided corrected itemized charges after formal CPT-level reconciliation demand.",
+    resolvedIn: "Resolved in 22 days",
+    effort: "2 letters + 1 call"
   },
   {
     title: "Employer plan appeal correction",
     amount: "$980 recovered",
     basis: "ERISA claims procedure (29 CFR § 2560.503-1)",
-    note: "Claim denial was reopened with plan-rights language and benchmark references."
+    note: "Claim denial was reopened with plan-rights language and benchmark references.",
+    resolvedIn: "Resolved in 31 days",
+    effort: "1 letter sent"
   }
 ];
 
@@ -188,7 +260,8 @@ const ONE_OFF_AUDIT = {
   id: "one-off",
   name: "One-off Audit",
   price: "$29 once",
-  tagline: "Best for a single urgent medical bill",
+  badge: "No subscription, no strings attached",
+  tagline: "Best for one urgent ER or hospital bill—simplest path, pay once",
   features: [
     "One full compliance audit",
     "One formal statute-cited appeal draft",
@@ -244,11 +317,11 @@ function ComplianceShields() {
         StatuteBill is built to map billing disputes to authorities already in our audit engine—not
         generic “please lower my bill” emails.
       </p>
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
+      <div className="mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0">
         {COMPLIANCE_PILLARS.map(({ id, code, title, body, Icon }) => (
           <div
             key={id}
-            className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            className="flex min-w-[min(100%,17.5rem)] shrink-0 snap-center flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:min-w-0 sm:snap-normal"
           >
             <div className="flex items-start gap-3">
               <div className="rounded-lg bg-brand-950/10 p-2 text-brand-950">
@@ -275,6 +348,18 @@ function ComplianceShields() {
 }
 
 function LegalContrastModule() {
+  const [expanded, setExpanded] = useState(false);
+  const [zoomStatute, setZoomStatute] = useState(false);
+
+  const emailShort = "“My bill is too high. Please reduce…”";
+  const statuteHighlight = (
+    <>
+      Cites{" "}
+      <mark className="rounded bg-amber-200 px-0.5 font-semibold text-brand-950">45 CFR Part 180</mark>
+      , No Surprises Act, and ERISA—with CPT/HCPCS line-level reconciliation demands.
+    </>
+  );
+
   return (
     <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
       <h2 className="font-display text-lg font-bold text-brand-950 sm:text-xl">
@@ -283,7 +368,67 @@ function LegalContrastModule() {
       <p className="mt-2 text-sm text-ink-600">
         The difference is legal enforceability. One asks for a favor; the other invokes obligations.
       </p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+
+      <div className="mt-4 sm:hidden">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+            Typical patient email
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-ink-600">{emailShort}</p>
+        </div>
+        <div className="relative my-3 flex justify-center">
+          <span className="rounded-full bg-brand-950 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-white">
+            VS
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setZoomStatute(true)}
+          className="w-full rounded-xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 text-left transition hover:border-blue-400"
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-800">
+            StatuteBill formal request
+          </p>
+          <p className="mt-2 text-sm font-semibold leading-relaxed text-ink-800">{statuteHighlight}</p>
+          <p className="mt-3 text-[11px] font-semibold text-blue-700">Tap to enlarge citations</p>
+        </button>
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          className="mt-3 w-full rounded-lg border border-slate-200 py-2 text-xs font-semibold text-brand-950"
+        >
+          {expanded ? "Hide full side-by-side" : "Show full comparison"}
+        </button>
+        {expanded ? (
+          <div className="mt-3 grid gap-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+                Typical patient email (full)
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-ink-600">
+                “My bill is too high. Please reduce the amount if possible. Thank you.”
+              </p>
+              <p className="mt-3 inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                Often ignored or delayed
+              </p>
+            </div>
+            <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-800">
+                StatuteBill formal request (full)
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-ink-700">
+                Cites 45 CFR Part 180, No Surprises Act, and ERISA appeals procedures with CPT/HCPCS
+                line-level reconciliation requests.
+              </p>
+              <p className="mt-3 inline-flex rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+                Requires formal compliance response
+              </p>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-4 hidden gap-3 sm:grid sm:grid-cols-2">
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
             Typical patient email
@@ -308,15 +453,72 @@ function LegalContrastModule() {
           </p>
         </div>
       </div>
+
+      {zoomStatute ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Statute request detail"
+          onClick={() => setZoomStatute(false)}
+        >
+          <div
+            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-blue-200 bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-bold text-brand-950">Citations at a glance</p>
+              <button
+                type="button"
+                className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold"
+                onClick={() => setZoomStatute(false)}
+              >
+                Close
+              </button>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-ink-700">
+              Formal demands reference enforceable authorities, for example{" "}
+              <mark className="rounded bg-amber-200 px-0.5 font-mono text-xs text-brand-950">
+                45 CFR § 180.50
+              </mark>{" "}
+              (machine-readable price files), No Surprises Act provisions, and{" "}
+              <mark className="rounded bg-amber-200 px-0.5 font-mono text-xs text-brand-950">
+                29 CFR § 2560.503-1
+              </mark>{" "}
+              for plan appeals—so the recipient must respond through compliance channels, not casual
+              email threads.
+            </p>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
 
 function SampleRiskReport() {
   const rows = [
-    { code: "70450", item: "CT head/brain without contrast", issue: "Potential upcoded imaging bundle", level: "High" },
-    { code: "93000", item: "Routine ECG", issue: "Charge exceeds benchmark percentile band", level: "Medium" },
-    { code: "96372", item: "Injection administration", issue: "Possible duplicate administration entry", level: "Medium" }
+    {
+      code: "99285",
+      item: "Emergency department visit — high severity (E/M)",
+      issue: "Potential E/M level mismatch vs documented acuity",
+      level: "High",
+      reason:
+        "Detected: charged as ER level 5, but vitals/acuity pattern aligns with level 3 under common CMS ED guidelines (illustrative)."
+    },
+    {
+      code: "93000",
+      item: "Routine ECG",
+      issue: "Charge exceeds benchmark percentile band",
+      level: "Medium",
+      reason: "Line amount sits above locality fee-schedule reference band for this code family."
+    },
+    {
+      code: "96372",
+      item: "Injection administration",
+      issue: "Possible duplicate administration entry",
+      level: "Medium",
+      reason: "Same date-of-service administration appears twice with no modifier separation."
+    }
   ];
   return (
     <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -337,6 +539,9 @@ function SampleRiskReport() {
             <p className="font-mono text-[11px] text-ink-500">{r.code}</p>
             <p className="font-medium text-ink-800">{r.item}</p>
             <p className="mt-1 text-ink-600">{r.issue}</p>
+            {r.reason ? (
+              <p className="mt-1.5 text-[11px] leading-relaxed text-ink-500">{r.reason}</p>
+            ) : null}
             <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
               {r.level} compliance risk
             </span>
@@ -354,11 +559,23 @@ function SuccessCaseLibrary() {
       <p className="mt-2 text-sm text-ink-600">
         Illustrative outcomes where statute-backed disputes created measurable billing adjustments.
       </p>
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <p className="mt-1 text-xs text-ink-500 sm:hidden">Swipe for more —</p>
+      <div className="mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0">
         {SUCCESS_CASES.map((c) => (
-          <article key={c.title} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+          <article
+            key={c.title}
+            className="min-w-[min(100%,18rem)] shrink-0 snap-center rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:min-w-0 sm:snap-normal"
+          >
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">{c.title}</p>
             <p className="mt-2 text-xl font-extrabold text-brand-950">{c.amount}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+                {c.resolvedIn}
+              </span>
+              <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                {c.effort}
+              </span>
+            </div>
             <p className="mt-2 text-[11px] font-semibold text-blue-700">{c.basis}</p>
             <p className="mt-2 text-xs leading-relaxed text-ink-600">{c.note}</p>
           </article>
@@ -480,12 +697,14 @@ function ComplianceFooterBadges() {
 
 export default function App() {
   const ANALYSIS_STEPS = [
-    "Matching CMS federal benchmark rates...",
-    "Checking hospital posted pricing references...",
-    "Detecting potential overcharge / unbundling risk...",
-    "Building statute-backed audit findings..."
+    "Extracting CPT / HCPCS codes from your bill…",
+    "Matching lines to federal CMS benchmark data…",
+    "Cross-checking hospital transparency & surprise-billing rules…",
+    "Building statute-backed audit findings…"
   ];
 
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [pricingTab, setPricingTab] = useState("subscribe");
   const [demoScenario, setDemoScenario] = useState("high");
   const [loading, setLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -665,13 +884,13 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-slate-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-slate-50 to-indigo-50 pb-[5.5rem] sm:pb-0">
       <header className="border-b border-slate-200/80 bg-white/85 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
-          <a href="/" className="flex items-center gap-2">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8 sm:py-5">
+          <a href="/" className="flex min-w-0 items-center gap-2" onClick={() => setMobileNavOpen(false)}>
             <BrandLogo />
           </a>
-          <nav className="flex items-center gap-6 text-sm font-medium text-brand-950">
+          <nav className="hidden items-center gap-6 text-sm font-medium text-brand-950 sm:flex">
             <a href="#compliance" className="transition-colors hover:text-blue-600">
               Compliance
             </a>
@@ -679,22 +898,60 @@ export default function App() {
               Plans
             </a>
           </nav>
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-brand-950 sm:hidden"
+            aria-expanded={mobileNavOpen}
+            aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+            onClick={() => setMobileNavOpen((o) => !o)}
+          >
+            {mobileNavOpen ? "✕" : "☰"}
+          </button>
         </div>
+        {mobileNavOpen ? (
+          <div className="border-t border-slate-200 bg-white px-5 py-4 sm:hidden">
+            <a
+              href="#compliance"
+              className="block py-2 text-sm font-semibold text-brand-950"
+              onClick={() => setMobileNavOpen(false)}
+            >
+              Compliance
+            </a>
+            <a
+              href="#pricing"
+              className="block py-2 text-sm font-semibold text-brand-950"
+              onClick={() => setMobileNavOpen(false)}
+            >
+              Plans
+            </a>
+            <a
+              href="#demo"
+              className="mt-2 block rounded-xl bg-brand-950 py-3 text-center text-sm font-semibold text-white"
+              onClick={() => setMobileNavOpen(false)}
+            >
+              Start free audit
+            </a>
+          </div>
+        ) : null}
       </header>
 
-      <main className="mx-auto max-w-6xl px-5 pb-24 pt-12 sm:px-8 sm:pt-16">
+      <main className="mx-auto max-w-6xl px-5 pb-8 pt-8 sm:px-8 sm:pb-24 sm:pt-16">
         <section className="text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
             Federal Compliance Audit &amp; Billing Protection
           </p>
-          <h1 className="mx-auto mt-3 max-w-4xl font-display text-4xl font-bold tracking-tight text-brand-950 sm:text-6xl">
-            StatuteBill
+          <h1 className="mx-auto mt-3 max-w-4xl font-display text-3xl font-bold tracking-tight text-brand-950 sm:text-6xl">
+            <span className="sm:hidden">Stop overpaying medical bills</span>
+            <span className="hidden sm:inline">StatuteBill</span>
           </h1>
-          <p className="mx-auto mt-4 max-w-3xl text-lg leading-relaxed text-ink-700">
+          <p className="mx-auto mt-3 max-w-3xl text-base font-medium leading-relaxed text-ink-800 sm:hidden">
+            Scan your bill. We cite the law.
+          </p>
+          <p className="mx-auto mt-4 hidden max-w-3xl text-lg leading-relaxed text-ink-700 sm:block">
             We don&apos;t just ask for discounts; we enforce transparency laws—mapping your charges
             to CMS benchmarks, hospital disclosures, and statute-backed appeal language.
           </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <div className="mt-6 hidden flex-wrap justify-center gap-3 sm:flex">
             <a
               href="#demo"
               className="rounded-xl bg-gradient-to-r from-brand-950 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:from-brand-900 hover:to-blue-600"
@@ -715,8 +972,8 @@ export default function App() {
           </p>
         </section>
 
-        <ScrollReveal as="section" className="mt-12">
-          <div className="grid gap-4 sm:grid-cols-3">
+        <ScrollReveal as="section" className="mt-10 sm:mt-12">
+          <div className="flex flex-col gap-4 sm:grid sm:grid-cols-3">
             {TRUST_STATS.map((s, idx) => (
               <ScrollReveal
                 as="div"
@@ -724,7 +981,10 @@ export default function App() {
                 delayMs={80 * idx}
                 className="rounded-3xl border border-slate-200 bg-white/90 p-6 text-center shadow-sm"
               >
-                <p className="text-[11px] uppercase tracking-wide text-ink-500">{s.label}</p>
+                <p className="inline-flex items-center justify-center text-[11px] uppercase tracking-wide text-ink-500">
+                  {s.label}
+                  {s.tooltip ? <InfoTooltip explanation={s.tooltip} /> : null}
+                </p>
                 <p className="mt-3 text-3xl font-black text-brand-950">{s.value}</p>
               </ScrollReveal>
             ))}
@@ -786,28 +1046,71 @@ export default function App() {
             </button>
           </div>
 
+          <p className="mt-2 rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-[11px] leading-relaxed text-amber-950 sm:text-xs">
+            <strong className="font-semibold">Photo tip:</strong> use bright, even light and keep CPT codes
+            and dollar amounts in focus—avoid glare.
+          </p>
+
           <div
             onDragOver={(e) => e.preventDefault()}
             onDrop={onDrop}
-            className="mt-4 flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-blue-200 bg-gradient-to-br from-white to-blue-50 p-5 text-center"
+            className="relative mt-4 flex min-h-[168px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[1.35rem] border-[3px] border-dashed border-blue-300/90 bg-gradient-to-b from-slate-900/5 to-blue-50/90 p-5 text-center shadow-inner ring-1 ring-blue-100/80 sm:min-h-[140px]"
           >
+            <span
+              className="pointer-events-none absolute inset-3 rounded-lg border border-white/40 sm:inset-4"
+              aria-hidden="true"
+            />
             <input
               type="file"
               accept="image/*,application/pdf"
               className="hidden"
-              id="bill-upload"
+              id="bill-upload-file"
               onChange={onFileInput}
             />
-            <label htmlFor="bill-upload" className="cursor-pointer">
-              <span className="text-sm font-medium text-brand-950">Drop a bill or tap to upload</span>
-              <span className="mt-1 block text-xs text-ink-500">
-                Mobile-friendly: take a photo and scan instantly
-              </span>
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              id="bill-upload-camera"
+              onChange={onFileInput}
+            />
+            <IconCamera className="mx-auto h-11 w-11 text-blue-700 sm:h-9 sm:w-9" />
+            <p className="mt-2 text-sm font-semibold text-brand-950 sm:hidden">Take a photo of your bill</p>
+            <p className="mt-1 hidden text-sm font-semibold text-brand-950 sm:block">Drop a bill or choose a file</p>
+            <label
+              htmlFor="bill-upload-camera"
+              className="mt-3 w-full max-w-xs cursor-pointer rounded-xl bg-gradient-to-r from-brand-950 to-blue-700 py-3 text-center text-sm font-bold text-white shadow-sm sm:hidden"
+            >
+              Open camera
             </label>
+            <label
+              htmlFor="bill-upload-file"
+              className="mt-2 cursor-pointer text-xs font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 sm:mt-3"
+            >
+              <span className="sm:hidden">Or upload PDF / gallery</span>
+              <span className="hidden sm:inline">Tap to upload PDF or image</span>
+            </label>
+            <p className="mt-3 max-w-sm text-[11px] leading-relaxed text-ink-600 sm:mt-2">
+              <span className="font-medium text-brand-950">Snap a clear photo—we&apos;ll handle the rest.</span>
+            </p>
+            <div className="mt-3 flex items-center justify-center gap-2 text-[11px] text-ink-600 sm:hidden">
+              <IconPhoneBill className="h-14 w-14 shrink-0 text-slate-500" />
+            </div>
             <div className="mt-3 h-1.5 w-44 overflow-hidden rounded-full bg-blue-100">
               <div className="scan-bar h-full w-1/3 rounded-full bg-blue-500" />
             </div>
           </div>
+
+          <p className="mt-3 flex flex-wrap items-center justify-center gap-1.5 text-center text-[11px] leading-relaxed text-ink-600 sm:text-xs">
+            <IconLockSmall className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden="true" />
+            <span>
+              <span className="font-semibold text-brand-950">HIPAA-aware workflow</span>
+              {" · "}
+              Bank-level encryption in transit. Processed in a HIPAA-compliant environment; your files are
+              never sold or shared.
+            </span>
+          </p>
 
           <button
             type="button"
@@ -1013,76 +1316,141 @@ export default function App() {
         </ScrollReveal>
 
         <ScrollReveal as="section" id="pricing" className="mt-24 border-t border-slate-200/80 pt-16">
-          <div className="mb-6 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">Single bill option</p>
-            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h3 className="font-display text-xl font-bold text-brand-950">{ONE_OFF_AUDIT.name}</h3>
-                <p className="text-sm text-ink-600">{ONE_OFF_AUDIT.tagline}</p>
-                <ul className="mt-2 space-y-1 text-xs text-ink-700">
-                  {ONE_OFF_AUDIT.features.map((f) => (
-                    <li key={f}>- {f}</li>
-                  ))}
-                </ul>
-              </div>
-              <div className="sm:text-right">
-                <p className="text-2xl font-black text-brand-950">{ONE_OFF_AUDIT.price}</p>
-                <button
-                  type="button"
-                  className="mt-2 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white hover:from-indigo-700 hover:to-blue-700"
-                >
-                  {ONE_OFF_AUDIT.cta}
-                </button>
+          <h2 className="text-center font-display text-2xl font-bold text-brand-950">Pricing</h2>
+          <p className="mx-auto mt-2 max-w-lg text-center text-sm text-ink-600">
+            One urgent bill? <strong className="text-brand-950">$29 once</strong> is the simplest choice.
+            Multiple bills or chronic care? Subscriptions bundle ongoing audits and appeals—with a{" "}
+            <strong className="text-brand-950">3-month minimum</strong>, then cancel anytime in Stripe.
+          </p>
+
+          <div
+            className="mx-auto mt-6 flex max-w-md rounded-xl border border-slate-200 bg-white p-1 shadow-sm sm:max-w-lg"
+            role="tablist"
+            aria-label="Pricing options"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pricingTab === "once"}
+              className={`flex-1 rounded-lg py-2.5 text-xs font-bold sm:text-sm ${
+                pricingTab === "once"
+                  ? "bg-brand-950 text-white shadow-sm"
+                  : "text-ink-600 hover:bg-slate-50"
+              }`}
+              onClick={() => setPricingTab("once")}
+            >
+              One bill ($29)
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pricingTab === "subscribe"}
+              className={`flex-1 rounded-lg py-2.5 text-xs font-bold sm:text-sm ${
+                pricingTab === "subscribe"
+                  ? "bg-brand-950 text-white shadow-sm"
+                  : "text-ink-600 hover:bg-slate-50"
+              }`}
+              onClick={() => setPricingTab("subscribe")}
+            >
+              Subscriptions
+            </button>
+          </div>
+
+          <div className={pricingTab === "once" ? "mt-6 block" : "mt-6 hidden sm:block"}>
+            <div className="rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-5 sm:max-w-none">
+              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">Single bill option</p>
+              <span className="mt-2 inline-flex rounded-full border border-indigo-300 bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-800">
+                {ONE_OFF_AUDIT.badge}
+              </span>
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h3 className="font-display text-xl font-bold text-brand-950">{ONE_OFF_AUDIT.name}</h3>
+                  <p className="text-sm text-ink-600">{ONE_OFF_AUDIT.tagline}</p>
+                  <ul className="mt-2 space-y-1 text-xs text-ink-700">
+                    {ONE_OFF_AUDIT.features.map((f) => (
+                      <li key={f}>- {f}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="sm:text-right">
+                  <p className="text-2xl font-black text-brand-950">{ONE_OFF_AUDIT.price}</p>
+                  <button
+                    type="button"
+                    onClick={() => startSubscription(ONE_OFF_AUDIT.id)}
+                    disabled={billingLoadingPlan !== null}
+                    className="mt-2 w-full rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:from-indigo-700 hover:to-blue-700 disabled:opacity-60 sm:w-auto"
+                  >
+                    {billingLoadingPlan === ONE_OFF_AUDIT.id ? "Opening checkout…" : ONE_OFF_AUDIT.cta}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
-          <h2 className="text-center font-display text-2xl font-bold text-brand-950">
-            Plans
-          </h2>
-          <p className="mx-auto mt-2 max-w-md text-center text-sm text-ink-600">
-            Keep protection on month after month—cancel anytime in the Stripe customer portal.
-          </p>
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            {PLANS.map((plan) => (
-              <ScrollReveal
-                as="div"
-                key={plan.id}
-                delayMs={100 * (plan.featured ? 1 : plan.id === "family" ? 2 : 0)}
-                className={`flex flex-col rounded-2xl border p-5 ${
-                  plan.featured
-                    ? "border-blue-400 bg-gradient-to-br from-white to-blue-50 shadow-md ring-2 ring-blue-100"
-                    : "border-slate-200 bg-gradient-to-br from-white to-indigo-50/40"
-                }`}
-              >
-                <h3 className="font-semibold text-brand-950">{plan.name}</h3>
-                <p className="mt-2 text-3xl font-black text-brand-950">
-                  {plan.price}
-                  <span className="text-sm font-normal text-ink-500">/mo</span>
-                </p>
-                <p className="mt-1 text-xs text-ink-500">{plan.tagline}</p>
-                <ul className="mt-4 flex-1 space-y-2 text-sm text-ink-700">
-                  {plan.features.map((line) => (
-                    <li key={line} className="flex gap-2">
-                      <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand-600" />
-                      <span>{line}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  type="button"
-                  onClick={() => startSubscription(plan.id)}
-                  disabled={billingLoadingPlan !== null}
-                  className={`mt-5 w-full rounded-xl py-2.5 text-sm font-bold ${
+          <div className={pricingTab === "subscribe" ? "mt-8 block" : "mt-8 hidden sm:block"}>
+            <h3 className="text-center font-display text-xl font-bold text-brand-950 sm:text-2xl">Plans</h3>
+            <p className="mx-auto mt-2 max-w-md text-center text-sm text-ink-600">
+              Ongoing protection for multiple bills—<strong className="text-brand-950">3-month minimum</strong>,
+              then cancel anytime in the Stripe customer portal.
+            </p>
+            <p className="mt-1 text-center text-xs text-ink-500 sm:hidden">Swipe to compare —</p>
+            <div className="mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0">
+              {PLANS.map((plan) => (
+                <ScrollReveal
+                  as="div"
+                  key={plan.id}
+                  delayMs={100 * (plan.featured ? 1 : plan.id === "family" ? 2 : 0)}
+                  className={`flex min-w-[min(100%,19rem)] shrink-0 snap-center flex-col rounded-2xl border p-5 sm:min-w-0 sm:snap-normal ${
                     plan.featured
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
-                      : "bg-gradient-to-r from-brand-950 to-blue-700 text-white hover:from-brand-900 hover:to-blue-600"
-                  } disabled:opacity-60`}
+                      ? "border-blue-400 bg-gradient-to-br from-white to-blue-50 shadow-md ring-2 ring-blue-100"
+                      : "border-slate-200 bg-gradient-to-br from-white to-indigo-50/40"
+                  }`}
                 >
-                  {billingLoadingPlan === plan.id ? "Opening checkout…" : plan.cta}
-                </button>
-              </ScrollReveal>
-            ))}
+                  <h3 className="font-semibold text-brand-950">{plan.name}</h3>
+                  <p className="mt-2 text-3xl font-black text-brand-950">
+                    {plan.price}
+                    <span className="text-sm font-normal text-ink-500">/mo</span>
+                  </p>
+                  <p className="mt-1 text-xs text-ink-500">{plan.tagline}</p>
+                  <ul className="mt-4 flex-1 space-y-2 text-sm text-ink-700">
+                    {plan.features.map((line) => (
+                      <li key={line} className="flex gap-2">
+                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand-600" />
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => startSubscription(plan.id)}
+                    disabled={billingLoadingPlan !== null}
+                    className={`mt-5 w-full rounded-xl py-2.5 text-sm font-bold ${
+                      plan.featured
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
+                        : "bg-gradient-to-r from-brand-950 to-blue-700 text-white hover:from-brand-900 hover:to-blue-600"
+                    } disabled:opacity-60`}
+                  >
+                    {billingLoadingPlan === plan.id ? "Opening checkout…" : plan.cta}
+                  </button>
+                </ScrollReveal>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 text-center text-sm leading-relaxed text-emerald-950">
+            <p className="font-semibold text-emerald-900">What if everything looks compliant?</p>
+            <p className="mt-1 text-emerald-900/90">
+              If our audit shows strong compliance, you still get a clean bill of health—and peace of mind
+              that you didn&apos;t leave money on the table.
+            </p>
+          </div>
+
+          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-xs leading-relaxed text-ink-600">
+            <p className="font-semibold text-brand-950">FAQ</p>
+            <p className="mt-2">
+              <strong className="text-ink-800">Is my data safe?</strong> We treat uploads as sensitive health
+              billing information, encrypt in transit, and do not sell or share your documents.
+            </p>
           </div>
         </ScrollReveal>
 
@@ -1111,6 +1479,18 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-6px_24px_rgba(15,23,42,0.08)] backdrop-blur-md sm:hidden">
+        <p className="text-center text-[11px] font-bold uppercase tracking-wide text-brand-800">
+          Avg. savings identified · $1,870
+        </p>
+        <a
+          href="#demo"
+          className="mt-2 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-brand-950 to-blue-700 py-3.5 text-sm font-bold text-white shadow-sm"
+        >
+          Start free audit
+        </a>
+      </div>
     </div>
   );
 }
