@@ -1,0 +1,8 @@
+name = "99" # 确保这里和你 Cloudflare 控制台看到的名字一致
+main = "src/index.js"
+compatibility_date = "2026-03-23"
+
+# 如果你之后要存储图片，可以开启 R2
+# [[r2_buckets]]
+# binding = 'R2_BUCKET'
+# bucket_name = 'medisaver-assets'

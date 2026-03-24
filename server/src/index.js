@@ -1,43 +1,46 @@
-import express from "express";
-import cors from "cors";
-import multer from "multer";
-import {
-  analyzeBill,
-  buildAppealLetter,
-  mockExtractLineItems
-} from "./analysis.js";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { analyzeBill, buildAppealLetter, mockExtractLineItems } from "./analysis.js";
 
-const app = express();
-const PORT = process.env.PORT || 8787;
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
+const app = new Hono();
 
-app.use(cors({ origin: true }));
-app.use(express.json({ limit: "2mb" }));
+// 启用跨域
+app.use("/api/*", cors());
 
-app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, service: "healthcare-billing-arbitrage-api" });
+// 健康检查
+app.get("/api/health", (c) => {
+  return c.json({ ok: true, service: "medisaver-ai-api" });
 });
 
-/** Multipart upload: image triggers mock OCR + analysis */
-app.post("/api/analyze", upload.single("bill"), (req, res) => {
+/** 处理图片上传分析 */
+app.post("/api/analyze", async (c) => {
   try {
-    const demo = req.body?.demoScenario || "high";
-    const buffer = req.file?.buffer;
-    const parsed = mockExtractLineItems(buffer, demo);
+    const body = await c.req.parseBody();
+    const billFile = body["bill"]; // 这是一个 Blob 对象
+    const demoScenario = body["demoScenario"] || "high";
+
+    let buffer = null;
+    if (billFile instanceof File) {
+      buffer = await billFile.arrayBuffer();
+    }
+
+    // 调用你分析逻辑中的 mock 函数
+    const parsed = mockExtractLineItems(buffer, demoScenario);
     const analysis = analyzeBill(parsed);
-    res.json({ parsed, analysis });
+
+    return c.json({ parsed, analysis });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "Analysis failed" });
+    return c.json({ error: "Analysis failed" }, 500);
   }
 });
 
-/** JSON body with explicit line items (for integrations / tests) */
-app.post("/api/analyze-json", (req, res) => {
+/** 处理 JSON 提交的分析 */
+app.post("/api/analyze-json", async (c) => {
   try {
-    const body = req.body;
+    const body = await c.req.json();
     if (!body?.lineItems?.length) {
-      return res.status(400).json({ error: "lineItems required" });
+      return c.json({ error: "lineItems required" }, 400);
     }
     const parsed = {
       facilityName: body.facilityName || "Unknown facility",
@@ -46,27 +49,24 @@ app.post("/api/analyze-json", (req, res) => {
       lineItems: body.lineItems
     };
     const analysis = analyzeBill(parsed);
-    res.json({ parsed, analysis });
+    return c.json({ parsed, analysis });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "Analysis failed" });
+    return c.json({ error: "Analysis failed" }, 500);
   }
 });
 
-app.post("/api/appeal", (req, res) => {
+/** 生成申诉信 */
+app.post("/api/appeal", async (c) => {
   try {
-    const { analysis, patientName, insurerName } = req.body;
+    const { analysis, patientName, insurerName } = await c.req.json();
     if (!analysis?.summary) {
-      return res.status(400).json({ error: "analysis object required" });
+      return c.json({ error: "analysis object required" }, 400);
     }
     const letter = buildAppealLetter(analysis, patientName || "Policyholder", insurerName || "");
-    res.json({ letter });
+    return c.json({ letter });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "Appeal generation failed" });
+    return c.json({ error: "Appeal generation failed" }, 500);
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`API listening on http://localhost:${PORT}`);
-});
+export default app;
