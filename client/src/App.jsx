@@ -585,12 +585,14 @@ export default function App() {
                     {fmt(result.analysis.summary.totalBilled)}
                   </p>
                 </div>
-                <div>
-                  <p className="text-xs text-ink-500">Potential overcharge (est.)</p>
-                  <p className="text-xl font-bold text-brand-700">
+                <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+                    Potential overcharge (est.)
+                  </p>
+                  <p className="text-3xl font-extrabold text-amber-700 sm:text-4xl">
                     {fmt(result.analysis.summary.potentialSavings)}
                   </p>
-                  <p className="text-xs text-ink-500">~{savingsPct}% of billed</p>
+                  <p className="text-sm font-semibold text-amber-900">~{savingsPct}% of billed</p>
                 </div>
               </div>
 
