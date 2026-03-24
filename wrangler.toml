@@ -2,6 +2,11 @@ name = "99" # ensure this matches Cloudflare Worker name
 main = "server/src/index.js"
 compatibility_date = "2026-03-23"
 
+[assets]
+directory = "client/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
 # If you want object storage later, uncomment and configure R2.
 # [[r2_buckets]]
 # binding = "R2_BUCKET"

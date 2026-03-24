@@ -61,7 +61,7 @@ function BrandLogo({ className = "" }) {
     <div className={`flex flex-col items-start ${className}`}>
       <img
         src="/medisaver-logo.png"
-        alt="MEDISAVER.AI — The Settlement Shield"
+        alt="StatuteBill — The Settlement Shield"
         className="h-12 w-auto sm:h-14"
         width={200}
         height={56}
@@ -671,7 +671,7 @@ export default function App() {
 
       <footer className="border-t border-slate-200 bg-white py-8 text-center text-xs text-ink-500">
         <p>
-          MEDISAVER.AI demo · Not medical or legal advice · Illustrative federal citations only ·
+          StatuteBill demo · Not medical or legal advice · Illustrative federal citations only ·
           Sample U.S. data · <span className="text-brand-800">The Settlement Shield</span>
         </p>
       </footer>
