@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const fmt = (n) =>
   typeof n === "number"
@@ -32,6 +32,38 @@ async function createCheckoutSession(planId) {
     throw new Error(data?.error || "Could not start Stripe checkout.");
   }
   return data;
+}
+
+function ScrollReveal({ as: Tag = "div", className = "", delayMs = 0, children, ...props }) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -10% 0px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <Tag
+      ref={ref}
+      className={`reveal-slide ${visible ? "is-visible" : ""} ${className}`.trim()}
+      style={{ transitionDelay: `${delayMs}ms` }}
+      {...props}
+    >
+      {children}
+    </Tag>
+  );
 }
 
 function SeverityPill({ severity }) {
@@ -491,14 +523,16 @@ export default function App() {
           </p>
         </section>
 
-        <section id="how" className="mt-12">
+        <ScrollReveal as="section" id="how" className="mt-12">
           <h2 className="text-center text-sm font-semibold uppercase tracking-wide text-ink-500">
             How it works
           </h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             {steps.map((s, i) => (
-              <div
+              <ScrollReveal
+                as="div"
                 key={s.title}
+                delayMs={80 * i}
                 className="rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm"
               >
                 <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-brand-950 text-sm font-bold text-white">
@@ -506,10 +540,10 @@ export default function App() {
                 </div>
                 <h3 className="mt-3 font-semibold text-brand-950">{s.title}</h3>
                 <p className="mt-2 text-xs leading-relaxed text-ink-600">{s.body}</p>
-              </div>
+              </ScrollReveal>
             ))}
           </div>
-        </section>
+        </ScrollReveal>
 
         <section id="demo" className="mt-14">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
@@ -577,7 +611,10 @@ export default function App() {
           )}
 
           {result && (
-            <div className="mt-8 space-y-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <ScrollReveal
+              as="div"
+              className="mt-8 space-y-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            >
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-xs text-ink-500">Billed</p>
@@ -690,15 +727,19 @@ export default function App() {
                   </pre>
                 )}
               </div>
-            </div>
+            </ScrollReveal>
           )}
 
         </section>
 
-        <ComplianceShields />
-        <AppealLetterPreview />
+        <ScrollReveal as="div">
+          <ComplianceShields />
+        </ScrollReveal>
+        <ScrollReveal as="div" delayMs={80}>
+          <AppealLetterPreview />
+        </ScrollReveal>
 
-        <section id="pricing" className="mt-16 border-t border-slate-200 pt-14">
+        <ScrollReveal as="section" id="pricing" className="mt-16 border-t border-slate-200 pt-14">
           <h2 className="text-center font-display text-2xl font-bold text-brand-950">
             Plans
           </h2>
@@ -707,8 +748,10 @@ export default function App() {
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {PLANS.map((plan) => (
-              <div
+              <ScrollReveal
+                as="div"
                 key={plan.id}
+                delayMs={100 * (plan.featured ? 1 : plan.id === "family" ? 2 : 0)}
                 className={`flex flex-col rounded-2xl border p-5 ${
                   plan.featured
                     ? "border-blue-400 bg-white shadow-md ring-2 ring-blue-100"
@@ -741,10 +784,10 @@ export default function App() {
                 >
                   {billingLoadingPlan === plan.id ? "Opening checkout…" : plan.cta}
                 </button>
-              </div>
+              </ScrollReveal>
             ))}
           </div>
-        </section>
+        </ScrollReveal>
       </main>
 
       <footer className="border-t border-slate-200 bg-slate-100/80">
