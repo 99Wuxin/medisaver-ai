@@ -12,33 +12,112 @@ function hospitalStats(facilityName, code) {
   return fac[code] ?? null;
 }
 
-/**
- * Mock "OCR" — demo returns a plausible bill if image present; otherwise uses body lines.
- */
-export function mockExtractLineItems(_buffer, demoScenario) {
-  if (demoScenario === "high") {
-    return {
-      facilityName: "General Metro Hospital",
-      patientName: "DEMO PATIENT",
-      statementDate: "2025-02-14",
-      lineItems: [
-        { code: "71046", description: "Chest X-ray 2 views", quantity: 1, billed: 1840 },
-        { code: "80053", description: "CMP — comprehensive metabolic", quantity: 1, billed: 890 },
-        { code: "85025", description: "CBC automated", quantity: 1, billed: 195 },
-        { code: "99213", description: "Office visit est patient", quantity: 1, billed: 485 },
-        { code: "36415", description: "Blood draw", quantity: 1, billed: 85 }
-      ]
-    };
-  }
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function withNoise(value, pct = 0.25) {
+  const factor = 1 + (Math.random() * 2 - 1) * pct;
+  return Math.max(1, Math.round(value * factor));
+}
+
+function fallbackDemoScenario(demoScenario) {
+  const high = [
+    { code: "71046", description: "Chest X-ray 2 views", quantity: 1, billed: withNoise(1840, 0.45) },
+    { code: "80053", description: "CMP — comprehensive metabolic", quantity: 1, billed: withNoise(890, 0.4) },
+    { code: "85025", description: "CBC automated", quantity: 1, billed: withNoise(195, 0.35) },
+    { code: "99213", description: "Office visit est patient", quantity: 1, billed: withNoise(485, 0.4) },
+    { code: "36415", description: "Blood draw", quantity: 1, billed: withNoise(85, 0.35) }
+  ];
+  const low = [
+    { code: "99213", description: "Office visit est patient", quantity: 1, billed: withNoise(265, 0.3) },
+    { code: "36415", description: "Blood draw", quantity: 1, billed: withNoise(45, 0.3) }
+  ];
   return {
     facilityName: "General Metro Hospital",
     patientName: "DEMO PATIENT",
-    statementDate: "2025-02-14",
-    lineItems: [
-      { code: "99213", description: "Office visit est patient", quantity: 1, billed: 265 },
-      { code: "36415", description: "Blood draw", quantity: 1, billed: 45 }
-    ]
+    statementDate: `2025-02-${String(randomInt(10, 28)).padStart(2, "0")}`,
+    lineItems: demoScenario === "high" ? high : low
   };
+}
+
+function coerceGeminiOutput(parsed, demoScenario) {
+  if (!parsed || typeof parsed !== "object") return null;
+  const lineItems = Array.isArray(parsed.lineItems)
+    ? parsed.lineItems
+        .map((x) => ({
+          code: String(x?.code || "").trim(),
+          description: String(x?.description || "Medical service").trim(),
+          quantity: Number(x?.quantity) > 0 ? Number(x.quantity) : 1,
+          billed: Math.max(1, Number(x?.billed) || 0)
+        }))
+        .filter((x) => x.code && x.billed > 0)
+    : [];
+  if (!lineItems.length) return null;
+  return {
+    facilityName: String(parsed.facilityName || "General Metro Hospital"),
+    patientName: String(parsed.patientName || "DEMO PATIENT"),
+    statementDate: String(parsed.statementDate || fallbackDemoScenario(demoScenario).statementDate),
+    lineItems
+  };
+}
+
+async function generateWithGemini(env, demoScenario) {
+  const apiKey = env?.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  const model = env?.GEMINI_MODEL || "gemini-1.5-flash";
+  const prompt = `Generate ONE synthetic US medical bill JSON object for audit testing.
+Requirements:
+- Output ONLY valid JSON (no markdown).
+- Use schema:
+{
+  "facilityName": "string",
+  "patientName": "string",
+  "statementDate": "YYYY-MM-DD",
+  "lineItems": [{ "code":"CPT/HCPCS", "description":"string", "quantity":number, "billed":number }]
+}
+- Scenario: ${demoScenario === "high" ? "high billed amount with 4-6 lines" : "small bill with 2-3 lines"}.
+- Keep all values realistic but varied each run.`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        generationConfig: {
+          temperature: 1.1,
+          topP: 0.95,
+          topK: 40
+        },
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    }
+  );
+
+  if (!res.ok) return null;
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) return null;
+
+  // Gemini may occasionally wrap JSON in markdown fences.
+  const cleaned = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+  const parsed = JSON.parse(cleaned);
+  return coerceGeminiOutput(parsed, demoScenario);
+}
+
+/**
+ * Mock "OCR" — demo returns a plausible bill if image present; otherwise uses body lines.
+ */
+export async function mockExtractLineItems(_buffer, demoScenario, env) {
+  try {
+    const generated = await generateWithGemini(env, demoScenario);
+    if (generated) return generated;
+  } catch {
+    // Silent fallback keeps demo resilient if Gemini is unavailable.
+  }
+  return fallbackDemoScenario(demoScenario);
 }
 
 export function analyzeBill(parsed) {

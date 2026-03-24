@@ -154,7 +154,7 @@ app.post("/api/analyze", async (c) => {
     }
 
     // 调用你分析逻辑中的 mock 函数
-    const parsed = mockExtractLineItems(buffer, demoScenario);
+    const parsed = await mockExtractLineItems(buffer, demoScenario, c.env);
     const analysis = analyzeBill(parsed);
 
     return c.json({ parsed, analysis });
