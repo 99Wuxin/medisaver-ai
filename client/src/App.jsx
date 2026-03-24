@@ -168,7 +168,7 @@ function BrandLogo({ className = "" }) {
         <span className="font-display text-lg font-bold tracking-tight text-brand-950 sm:text-xl">
           StatuteBill
         </span>
-        <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-500">
+        <span className="hidden text-[10px] font-medium uppercase tracking-[0.12em] text-ink-500 sm:inline">
           The Settlement Shield
         </span>
       </div>
@@ -309,7 +309,7 @@ const COMPLIANCE_PILLARS = [
 
 function ComplianceShields() {
   return (
-    <section id="compliance" className="mt-16 scroll-mt-20">
+    <section id="compliance" className="mt-10 scroll-mt-20 sm:mt-16">
       <h2 className="text-center font-display text-xl font-bold text-brand-950 sm:text-2xl">
         Legal compliance you can cite
       </h2>
@@ -317,11 +317,11 @@ function ComplianceShields() {
         StatuteBill is built to map billing disputes to authorities already in our audit engine—not
         generic “please lower my bill” emails.
       </p>
-      <div className="mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0">
+      <div className="-mx-5 mt-8 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 scroll-pr-5 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:scroll-pl-0 sm:scroll-pr-0 sm:pb-0">
         {COMPLIANCE_PILLARS.map(({ id, code, title, body, Icon }) => (
           <div
             key={id}
-            className="flex min-w-[min(100%,17.5rem)] shrink-0 snap-center flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:min-w-0 sm:snap-normal"
+            className="flex w-[min(85vw,19rem)] shrink-0 snap-start flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:w-auto sm:min-w-0 sm:snap-normal"
           >
             <div className="flex items-start gap-3">
               <div className="rounded-lg bg-brand-950/10 p-2 text-brand-950">
@@ -376,8 +376,11 @@ function LegalContrastModule() {
           </p>
           <p className="mt-2 text-xs leading-relaxed text-ink-600">{emailShort}</p>
         </div>
-        <div className="relative my-3 flex justify-center">
-          <span className="rounded-full bg-brand-950 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-white">
+        <div className="relative my-4 flex justify-center">
+          <span
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-brand-950 to-blue-800 text-sm font-black uppercase tracking-widest text-white shadow-md ring-4 ring-white"
+            aria-hidden="true"
+          >
             VS
           </span>
         </div>
@@ -554,17 +557,17 @@ function SampleRiskReport() {
 
 function SuccessCaseLibrary() {
   return (
-    <section className="mt-14 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:mt-14 sm:p-6">
       <h2 className="font-display text-xl font-bold text-brand-950 sm:text-2xl">Success case library</h2>
       <p className="mt-2 text-sm text-ink-600">
         Illustrative outcomes where statute-backed disputes created measurable billing adjustments.
       </p>
       <p className="mt-1 text-xs text-ink-500 sm:hidden">Swipe for more —</p>
-      <div className="mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0">
+      <div className="-mx-5 mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 scroll-pr-5 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-3 sm:overflow-visible sm:scroll-pl-0 sm:scroll-pr-0 sm:pb-0">
         {SUCCESS_CASES.map((c) => (
           <article
             key={c.title}
-            className="min-w-[min(100%,18rem)] shrink-0 snap-center rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:min-w-0 sm:snap-normal"
+            className="w-[min(85vw,18.5rem)] shrink-0 snap-start rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:w-auto sm:min-w-0 sm:snap-normal"
           >
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">{c.title}</p>
             <p className="mt-2 text-xl font-extrabold text-brand-950">{c.amount}</p>
@@ -697,13 +700,27 @@ function ComplianceFooterBadges() {
 
 export default function App() {
   const ANALYSIS_STEPS = [
-    "Extracting CPT / HCPCS codes from your bill…",
-    "Matching lines to federal CMS benchmark data…",
-    "Cross-checking hospital transparency & surprise-billing rules…",
-    "Building statute-backed audit findings…"
+    {
+      en: "Extracting CPT / HCPCS codes from your bill…",
+      zh: "正在提取 CPT / HCPCS 代码…"
+    },
+    {
+      en: "Querying federal CMS benchmark database…",
+      zh: "正在检索联邦 CMS 数据库…"
+    },
+    {
+      en: "Cross-checking transparency & surprise-billing rules…",
+      zh: "正在核对价格透明与意外账单规则…"
+    },
+    {
+      en: "Building statute-backed audit findings…",
+      zh: "正在生成法规依据的审计结论…"
+    }
   ];
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [cameraGuideOpen, setCameraGuideOpen] = useState(false);
+  const cameraInputRef = useRef(null);
   const [pricingTab, setPricingTab] = useState("subscribe");
   const [demoScenario, setDemoScenario] = useState("high");
   const [loading, setLoading] = useState(false);
@@ -745,7 +762,7 @@ export default function App() {
       setLoadingProgress(0);
       setLoadingStep(0);
     }, 180);
-  }, [ANALYSIS_STEPS.length]);
+  }, []);
 
   useEffect(
     () => () => {
@@ -929,19 +946,19 @@ export default function App() {
               className="mt-2 block rounded-xl bg-brand-950 py-3 text-center text-sm font-semibold text-white"
               onClick={() => setMobileNavOpen(false)}
             >
-              Start free audit
+              Run compliance audit
             </a>
           </div>
         ) : null}
       </header>
 
-      <main className="mx-auto max-w-6xl px-5 pb-8 pt-8 sm:px-8 sm:pb-24 sm:pt-16">
-        <section className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
+      <main className="mx-auto flex max-w-6xl flex-col px-5 pb-8 pt-6 sm:px-8 sm:pb-24 sm:pt-16">
+        <section className="order-1 text-center">
+          <p className="hidden text-xs font-semibold uppercase tracking-[0.14em] text-brand-700 sm:block">
             Federal Compliance Audit &amp; Billing Protection
           </p>
-          <h1 className="mx-auto mt-3 max-w-4xl font-display text-3xl font-bold tracking-tight text-brand-950 sm:text-6xl">
-            <span className="sm:hidden">Stop overpaying medical bills</span>
+          <h1 className="mx-auto mt-2 max-w-4xl font-display text-3xl font-bold tracking-tight text-brand-950 sm:mt-3 sm:text-6xl">
+            <span className="sm:hidden">Stop Overpaying Medical Bills</span>
             <span className="hidden sm:inline">StatuteBill</span>
           </h1>
           <p className="mx-auto mt-3 max-w-3xl text-base font-medium leading-relaxed text-ink-800 sm:hidden">
@@ -951,35 +968,37 @@ export default function App() {
             We don&apos;t just ask for discounts; we enforce transparency laws—mapping your charges
             to CMS benchmarks, hospital disclosures, and statute-backed appeal language.
           </p>
-          <div className="mt-6 hidden flex-wrap justify-center gap-3 sm:flex">
+          <div className="mx-auto mt-5 flex w-full max-w-md flex-col gap-3 sm:mt-6 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center">
             <a
               href="#demo"
-              className="rounded-xl bg-gradient-to-r from-brand-950 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:from-brand-900 hover:to-blue-600"
+              className="w-full rounded-xl bg-gradient-to-r from-brand-950 to-blue-700 py-3.5 text-center text-sm font-bold text-white shadow-sm transition hover:from-brand-900 hover:to-blue-600 sm:w-auto sm:px-6 sm:py-2.5 sm:font-semibold"
             >
               Run compliance audit
             </a>
             <a
               href="#pricing"
-              className="rounded-xl border border-slate-200 bg-white/90 px-5 py-2.5 text-sm font-semibold text-brand-950 transition hover:border-indigo-300 hover:bg-indigo-50/70"
+              className="hidden rounded-xl border border-slate-200 bg-white/90 px-5 py-2.5 text-center text-sm font-semibold text-brand-950 transition hover:border-indigo-300 hover:bg-indigo-50/70 sm:inline-flex sm:items-center sm:justify-center"
             >
               View plans
             </a>
           </div>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-ink-500">
+          <p className="mx-auto mt-4 hidden max-w-2xl text-sm leading-relaxed text-ink-500 sm:block">
             Illustrative audits reference{" "}
             <span className="font-semibold text-brand-800">CMS-aligned benchmarks</span>—your
             outcomes depend on your plan, provider, and facts.
           </p>
         </section>
 
-        <ScrollReveal as="section" className="mt-10 sm:mt-12">
-          <div className="flex flex-col gap-4 sm:grid sm:grid-cols-3">
+        <ScrollReveal as="section" className="order-3 mt-10 sm:order-2 sm:mt-12">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {TRUST_STATS.map((s, idx) => (
               <ScrollReveal
                 as="div"
                 key={s.label}
                 delayMs={80 * idx}
-                className="rounded-3xl border border-slate-200 bg-white/90 p-6 text-center shadow-sm"
+                className={`rounded-3xl border border-slate-200 bg-white/90 p-5 text-center shadow-sm sm:p-6 ${
+                  idx === 2 ? "col-span-2 sm:col-span-1" : ""
+                }`}
               >
                 <p className="inline-flex items-center justify-center text-[11px] uppercase tracking-wide text-ink-500">
                   {s.label}
@@ -991,7 +1010,7 @@ export default function App() {
           </div>
         </ScrollReveal>
 
-        <ScrollReveal as="section" id="how" className="mt-16">
+        <ScrollReveal as="section" id="how" className="order-5 mt-12 sm:order-3 sm:mt-16">
           <h2 className="text-center text-sm font-semibold uppercase tracking-wide text-ink-500">
             How it works
           </h2>
@@ -1013,7 +1032,10 @@ export default function App() {
           </div>
         </ScrollReveal>
 
-        <section id="demo" className="mt-20 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:p-8">
+        <section
+          id="demo"
+          className="order-2 mt-8 scroll-mt-20 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm sm:order-4 sm:mt-20 sm:p-8"
+        >
           <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
             Compliance audit
           </h2>
@@ -1046,7 +1068,7 @@ export default function App() {
             </button>
           </div>
 
-          <p className="mt-2 rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-[11px] leading-relaxed text-amber-950 sm:text-xs">
+          <p className="mt-2 hidden rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-[11px] leading-relaxed text-amber-950 sm:block sm:text-xs">
             <strong className="font-semibold">Photo tip:</strong> use bright, even light and keep CPT codes
             and dollar amounts in focus—avoid glare.
           </p>
@@ -1068,6 +1090,7 @@ export default function App() {
               onChange={onFileInput}
             />
             <input
+              ref={cameraInputRef}
               type="file"
               accept="image/*"
               capture="environment"
@@ -1078,12 +1101,13 @@ export default function App() {
             <IconCamera className="mx-auto h-11 w-11 text-blue-700 sm:h-9 sm:w-9" />
             <p className="mt-2 text-sm font-semibold text-brand-950 sm:hidden">Take a photo of your bill</p>
             <p className="mt-1 hidden text-sm font-semibold text-brand-950 sm:block">Drop a bill or choose a file</p>
-            <label
-              htmlFor="bill-upload-camera"
-              className="mt-3 w-full max-w-xs cursor-pointer rounded-xl bg-gradient-to-r from-brand-950 to-blue-700 py-3 text-center text-sm font-bold text-white shadow-sm sm:hidden"
+            <button
+              type="button"
+              className="mt-3 w-full max-w-xs rounded-xl bg-gradient-to-r from-brand-950 to-blue-700 py-3 text-center text-sm font-bold text-white shadow-sm sm:hidden"
+              onClick={() => setCameraGuideOpen(true)}
             >
-              Open camera
-            </label>
+              Take a photo of your bill
+            </button>
             <label
               htmlFor="bill-upload-file"
               className="mt-2 cursor-pointer text-xs font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 sm:mt-3"
@@ -1102,9 +1126,13 @@ export default function App() {
             </div>
           </div>
 
-          <p className="mt-3 flex flex-wrap items-center justify-center gap-1.5 text-center text-[11px] leading-relaxed text-ink-600 sm:text-xs">
-            <IconLockSmall className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden="true" />
-            <span>
+          <p className="mt-3 text-center text-[11px] font-semibold leading-snug text-brand-950 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-1.5 sm:text-xs sm:font-normal sm:text-ink-600">
+            <span className="inline-flex items-center justify-center gap-1 sm:hidden" aria-hidden="true">
+              🔒
+            </span>
+            <IconLockSmall className="mx-auto hidden h-4 w-4 shrink-0 text-emerald-700 sm:mx-0 sm:inline" aria-hidden="true" />
+            <span className="sm:hidden">HIPAA Compliant &amp; Bank-level Encryption</span>
+            <span className="hidden sm:inline">
               <span className="font-semibold text-brand-950">HIPAA-aware workflow</span>
               {" · "}
               Bank-level encryption in transit. Processed in a HIPAA-compliant environment; your files are
@@ -1133,14 +1161,15 @@ export default function App() {
                   style={{ width: `${loadingProgress}%` }}
                 />
               </div>
-              <ul className="mt-3 space-y-1.5 text-xs">
+              <ul className="mt-3 space-y-2 text-xs">
                 {ANALYSIS_STEPS.map((step, idx) => (
                   <li
-                    key={step}
+                    key={step.en}
                     className={idx <= loadingStep ? "font-medium text-blue-900" : "text-ink-500"}
                   >
                     {idx <= loadingStep ? "• " : "○ "}
-                    {step}
+                    <span className="sm:hidden">{step.zh}</span>
+                    <span className="hidden sm:inline">{step.en}</span>
                   </li>
                 ))}
               </ul>
@@ -1305,17 +1334,21 @@ export default function App() {
 
         </section>
 
-        <ScrollReveal as="div">
+        <ScrollReveal as="div" className="order-6 sm:order-5">
           <ComplianceShields />
         </ScrollReveal>
-        <ScrollReveal as="div">
+        <ScrollReveal as="div" className="order-7 sm:order-6">
           <LegalContrastModule />
         </ScrollReveal>
-        <ScrollReveal as="div" delayMs={80}>
+        <ScrollReveal as="div" className="order-8 sm:order-7" delayMs={80}>
           <AppealLetterPreview />
         </ScrollReveal>
 
-        <ScrollReveal as="section" id="pricing" className="mt-24 border-t border-slate-200/80 pt-16">
+        <ScrollReveal
+          as="section"
+          id="pricing"
+          className="order-9 mt-16 border-t border-slate-200/80 pt-12 sm:order-8 sm:mt-24 sm:pt-16"
+        >
           <h2 className="text-center font-display text-2xl font-bold text-brand-950">Pricing</h2>
           <p className="mx-auto mt-2 max-w-lg text-center text-sm text-ink-600">
             One urgent bill? <strong className="text-brand-950">$29 once</strong> is the simplest choice.
@@ -1394,13 +1427,13 @@ export default function App() {
               then cancel anytime in the Stripe customer portal.
             </p>
             <p className="mt-1 text-center text-xs text-ink-500 sm:hidden">Swipe to compare —</p>
-            <div className="mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0">
+            <div className="-mx-5 mt-6 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 scroll-pr-5 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:scroll-pl-0 sm:scroll-pr-0 sm:pb-0">
               {PLANS.map((plan) => (
                 <ScrollReveal
                   as="div"
                   key={plan.id}
                   delayMs={100 * (plan.featured ? 1 : plan.id === "family" ? 2 : 0)}
-                  className={`flex min-w-[min(100%,19rem)] shrink-0 snap-center flex-col rounded-2xl border p-5 sm:min-w-0 sm:snap-normal ${
+                  className={`flex w-[min(85vw,19.5rem)] shrink-0 snap-start flex-col rounded-2xl border p-5 sm:w-auto sm:min-w-0 sm:snap-normal ${
                     plan.featured
                       ? "border-blue-400 bg-gradient-to-br from-white to-blue-50 shadow-md ring-2 ring-blue-100"
                       : "border-slate-200 bg-gradient-to-br from-white to-indigo-50/40"
@@ -1454,10 +1487,54 @@ export default function App() {
           </div>
         </ScrollReveal>
 
-        <ScrollReveal as="div">
+        <ScrollReveal as="div" className="order-4 sm:order-9">
           <SuccessCaseLibrary />
         </ScrollReveal>
       </main>
+
+      {cameraGuideOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="camera-guide-title"
+          onClick={() => setCameraGuideOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p id="camera-guide-title" className="text-base font-bold text-brand-950">
+              拍照提示
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-ink-700">
+              请确保光线充足，能清晰看到 CPT Code 和金额。
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-ink-500">
+              Use bright, even light—CPT codes and dollar amounts should be readable, with minimal glare.
+            </p>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-ink-700"
+                onClick={() => setCameraGuideOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="flex-1 rounded-xl bg-gradient-to-r from-brand-950 to-blue-700 py-3 text-sm font-bold text-white"
+                onClick={() => {
+                  setCameraGuideOpen(false);
+                  requestAnimationFrame(() => cameraInputRef.current?.click());
+                }}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <footer className="border-t border-slate-200/80 bg-gradient-to-r from-slate-100/80 to-indigo-100/70">
         <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
@@ -1488,7 +1565,7 @@ export default function App() {
           href="#demo"
           className="mt-2 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-brand-950 to-blue-700 py-3.5 text-sm font-bold text-white shadow-sm"
         >
-          Start free audit
+          Run compliance audit
         </a>
       </div>
     </div>
