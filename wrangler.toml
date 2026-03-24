@@ -1,0 +1,8 @@
+name = "99" # ensure this matches Cloudflare Worker name
+main = "server/src/index.js"
+compatibility_date = "2026-03-23"
+
+# If you want object storage later, uncomment and configure R2.
+# [[r2_buckets]]
+# binding = "R2_BUCKET"
+# bucket_name = "medisaver-assets"
