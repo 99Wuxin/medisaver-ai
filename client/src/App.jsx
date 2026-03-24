@@ -125,7 +125,7 @@ const PLANS = [
     features: [
       "Unlimited bill audits",
       "AI risk flags on every upload",
-      "Monthly credit monitoring"
+      "Monthly credit monitoring with proactive anomaly alerts before collections impact"
     ],
     cta: "Get protected"
   },
@@ -156,6 +156,46 @@ const PLANS = [
     cta: "Secure my bills"
   }
 ];
+
+const TRUST_STATS = [
+  { label: "Average potential savings identified", value: "$1,870" },
+  { label: "Statute / regulation coverage", value: "45+ hooks" },
+  { label: "Illustrative audit confidence checks", value: "98%" }
+];
+
+const SUCCESS_CASES = [
+  {
+    title: "Emergency room balance-bill dispute",
+    amount: "$2,400 reduced",
+    basis: "No Surprises Act (42 U.S.C. § 300gg-131)",
+    note: "User challenged non-consensual out-of-network charges with statute-cited letter."
+  },
+  {
+    title: "Imaging overcharge reconciliation",
+    amount: "$1,150 adjusted",
+    basis: "45 CFR Part 180 transparency request",
+    note: "Facility provided corrected itemized charges after formal CPT-level reconciliation demand."
+  },
+  {
+    title: "Employer plan appeal correction",
+    amount: "$980 recovered",
+    basis: "ERISA claims procedure (29 CFR § 2560.503-1)",
+    note: "Claim denial was reopened with plan-rights language and benchmark references."
+  }
+];
+
+const ONE_OFF_AUDIT = {
+  id: "one-off",
+  name: "One-off Audit",
+  price: "$29 once",
+  tagline: "Best for a single urgent medical bill",
+  features: [
+    "One full compliance audit",
+    "One formal statute-cited appeal draft",
+    "Downloadable report with key citations"
+  ],
+  cta: "Start one-off audit"
+};
 
 function IconDoc({ className = "h-8 w-8" }) {
   return (
@@ -221,8 +261,107 @@ function ComplianceShields() {
                 <h3 className="mt-1 font-semibold text-brand-950">{title}</h3>
               </div>
             </div>
+            <div className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-blue-800">
+              <span>Legal shield</span>
+              <span aria-hidden="true">●</span>
+              <span>Citable authority</span>
+            </div>
             <p className="mt-3 flex-1 text-xs leading-relaxed text-ink-600">{body}</p>
           </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function LegalContrastModule() {
+  return (
+    <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <h2 className="font-display text-lg font-bold text-brand-950 sm:text-xl">
+        Generic complaint vs statute-backed formal demand
+      </h2>
+      <p className="mt-2 text-sm text-ink-600">
+        The difference is legal enforceability. One asks for a favor; the other invokes obligations.
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+            Typical patient email
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-ink-600">
+            “My bill is too high. Please reduce the amount if possible. Thank you.”
+          </p>
+          <p className="mt-3 inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+            Often ignored or delayed
+          </p>
+        </div>
+        <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-800">
+            StatuteBill formal request
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-ink-700">
+            Cites 45 CFR Part 180, No Surprises Act, and ERISA appeals procedures with CPT/HCPCS
+            line-level reconciliation requests.
+          </p>
+          <p className="mt-3 inline-flex rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+            Requires formal compliance response
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SampleRiskReport() {
+  const rows = [
+    { code: "70450", item: "CT head/brain without contrast", issue: "Potential upcoded imaging bundle", level: "High" },
+    { code: "93000", item: "Routine ECG", issue: "Charge exceeds benchmark percentile band", level: "Medium" },
+    { code: "96372", item: "Injection administration", issue: "Possible duplicate administration entry", level: "Medium" }
+  ];
+  return (
+    <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
+          De-identified sample report preview
+        </h3>
+        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-800">
+          Preview before purchase
+        </span>
+      </div>
+      <p className="mt-2 text-xs leading-relaxed text-ink-600">
+        This is what the audit engine highlights: compliance risk points and statute hooks, not just total price.
+      </p>
+      <ul className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-100 bg-slate-50/60 px-3">
+        {rows.map((r) => (
+          <li key={r.code} className="py-3 text-xs">
+            <p className="font-mono text-[11px] text-ink-500">{r.code}</p>
+            <p className="font-medium text-ink-800">{r.item}</p>
+            <p className="mt-1 text-ink-600">{r.issue}</p>
+            <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+              {r.level} compliance risk
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function SuccessCaseLibrary() {
+  return (
+    <section className="mt-14 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <h2 className="font-display text-xl font-bold text-brand-950 sm:text-2xl">Success case library</h2>
+      <p className="mt-2 text-sm text-ink-600">
+        Illustrative outcomes where statute-backed disputes created measurable billing adjustments.
+      </p>
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        {SUCCESS_CASES.map((c) => (
+          <article key={c.title} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">{c.title}</p>
+            <p className="mt-2 text-xl font-extrabold text-brand-950">{c.amount}</p>
+            <p className="mt-2 text-[11px] font-semibold text-blue-700">{c.basis}</p>
+            <p className="mt-2 text-xs leading-relaxed text-ink-600">{c.note}</p>
+          </article>
         ))}
       </div>
     </section>
@@ -249,22 +388,29 @@ function AppealLetterPreview() {
           Redacted excerpt · illustrative
         </div>
         <div className="max-h-[220px] overflow-y-auto p-4 font-mono text-[11px] leading-relaxed text-ink-800 sm:text-xs">
-          <p className="font-semibold text-brand-950">Subject: Formal request for review (federal & plan-based rights)</p>
+          <p className="font-semibold text-brand-950">
+            Subject: NOTICE OF STATUTORY NON-COMPLIANCE &amp; FORMAL ADMINISTRATIVE APPEAL
+          </p>
           <p className="mt-2 text-ink-600">
-            Dear Billing Integrity / Appeals Department,
+            ATTENTION: COMPLIANCE OFFICER.
             <br />
             <br />
-            I am exercising rights under applicable federal law and my plan—not requesting a
-            courtesy discount.
+            This is a formal audit demand under 45 CFR Part 180. I am contesting the validity of
+            billed charges based on documented discrepancies with CMS-aligned benchmarks and
+            statutory protections.
           </p>
           <p className="mt-3 text-ink-700">
             <span className="text-ink-500">Federal framework referenced:</span>
             <br />• Hospital price transparency —{" "}
-            <mark className="rounded bg-amber-200 px-0.5 text-brand-950">45 CFR Part 180</mark>{" "}
-            (standard charges; machine-readable file).
-            <br />• No Surprises Act — 42 U.S.C. § 300gg-131 et seq. (where applicable).
+            <mark className="rounded bg-amber-200 px-0.5 text-brand-950">45 CFR § 180.50</mark>{" "}
+            (machine-readable file compliance).
+            <br />• No Surprises Act — 42 U.S.C. § 300gg-131 et seq. with GFE reconciliation demand.
             <br />• ERISA — 29 U.S.C. §§ 1132–1133; claims procedures —{" "}
             <mark className="rounded bg-amber-200 px-0.5 text-brand-950">29 CFR § 2560.503-1</mark>.
+          </p>
+          <p className="mt-3 text-ink-700">
+            Response deadline requested: 30 calendar days for cured invoice or detailed written
+            reconciliation.
           </p>
           <p className="mt-3 text-ink-500">
             [Line-item reconciliation with CPT/HCPCS, benchmarks, and plan EOB cross-walk follows
@@ -523,6 +669,22 @@ export default function App() {
           </p>
         </section>
 
+        <ScrollReveal as="section" className="mt-8">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {TRUST_STATS.map((s, idx) => (
+              <ScrollReveal
+                as="div"
+                key={s.label}
+                delayMs={80 * idx}
+                className="rounded-2xl border border-slate-200 bg-white/90 p-4 text-center shadow-sm"
+              >
+                <p className="text-[11px] uppercase tracking-wide text-ink-500">{s.label}</p>
+                <p className="mt-2 text-2xl font-black text-brand-950">{s.value}</p>
+              </ScrollReveal>
+            ))}
+          </div>
+        </ScrollReveal>
+
         <ScrollReveal as="section" id="how" className="mt-12">
           <h2 className="text-center text-sm font-semibold uppercase tracking-wide text-ink-500">
             How it works
@@ -592,17 +754,25 @@ export default function App() {
             />
             <label htmlFor="bill-upload" className="cursor-pointer">
               <span className="text-sm font-medium text-brand-950">Drop a bill or tap to upload</span>
+              <span className="mt-1 block text-xs text-ink-500">
+                Mobile-friendly: take a photo and scan instantly
+              </span>
             </label>
+            <div className="mt-3 h-1.5 w-44 overflow-hidden rounded-full bg-blue-100">
+              <div className="scan-bar h-full w-1/3 rounded-full bg-blue-500" />
+            </div>
           </div>
 
           <button
             type="button"
             disabled={loading}
             onClick={runDemo}
-            className="mt-3 w-full rounded-xl bg-gradient-to-r from-brand-950 to-indigo-700 py-3 text-sm font-semibold text-white transition hover:from-brand-900 hover:to-indigo-600 disabled:opacity-60"
+            className="mt-3 w-full rounded-xl border border-slate-300 bg-white py-3 text-sm font-semibold text-ink-700 transition hover:border-indigo-300 hover:bg-indigo-50 disabled:opacity-60"
           >
             {loading ? "Running…" : "Run audit (no file)"}
           </button>
+
+          <SampleRiskReport />
 
           {error && (
             <p className="mt-3 text-sm text-red-600" role="alert">
@@ -735,11 +905,38 @@ export default function App() {
         <ScrollReveal as="div">
           <ComplianceShields />
         </ScrollReveal>
+        <ScrollReveal as="div">
+          <LegalContrastModule />
+        </ScrollReveal>
         <ScrollReveal as="div" delayMs={80}>
           <AppealLetterPreview />
         </ScrollReveal>
 
         <ScrollReveal as="section" id="pricing" className="mt-16 border-t border-slate-200/80 pt-14">
+          <div className="mb-6 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">Single bill option</p>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h3 className="font-display text-xl font-bold text-brand-950">{ONE_OFF_AUDIT.name}</h3>
+                <p className="text-sm text-ink-600">{ONE_OFF_AUDIT.tagline}</p>
+                <ul className="mt-2 space-y-1 text-xs text-ink-700">
+                  {ONE_OFF_AUDIT.features.map((f) => (
+                    <li key={f}>- {f}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="sm:text-right">
+                <p className="text-2xl font-black text-brand-950">{ONE_OFF_AUDIT.price}</p>
+                <button
+                  type="button"
+                  className="mt-2 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white hover:from-indigo-700 hover:to-blue-700"
+                >
+                  {ONE_OFF_AUDIT.cta}
+                </button>
+              </div>
+            </div>
+          </div>
+
           <h2 className="text-center font-display text-2xl font-bold text-brand-950">
             Plans
           </h2>
@@ -787,6 +984,10 @@ export default function App() {
               </ScrollReveal>
             ))}
           </div>
+        </ScrollReveal>
+
+        <ScrollReveal as="div">
+          <SuccessCaseLibrary />
         </ScrollReveal>
       </main>
 

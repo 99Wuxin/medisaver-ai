@@ -280,13 +280,20 @@ ${summary.facilityName ? `Re: Account / services at ${summary.facilityName}` : "
 ${insurerName ? `Cc: ${insurerName}` : ""}
 Date: ${date}
 
-Subject: Formal request for review, adjustment, and correction of charges (federal & plan-based rights)
+Subject: NOTICE OF STATUTORY NON-COMPLIANCE & FORMAL ADMINISTRATIVE APPEAL
 
-Dear Billing Integrity / Appeals Department,
+ATTENTION: COMPLIANCE OFFICER / BILLING INTEGRITY DEPARTMENT
 
-I am writing to dispute specific charges on my statement dated ${summary.statementDate ?? "[date]"}. This letter places you on notice that I am exercising rights and expectations created under federal law and under my health plan—not merely asking for a “courtesy” discount.
+This letter serves as a Formal Demand for a line-item audit and reconciliation of the attached invoice/EOB, including charges on my statement dated ${summary.statementDate ?? "[date]"}. This action is taken pursuant to my rights under federal law; it is not a request for financial assistance or a courtesy discount.
 
 ${framework}
+
+Specific compliance notices:
+1) Hospital Price Transparency (45 CFR Part 180):
+   I am auditing your charges against Mandatory Machine-Readable File requirements under 45 CFR § 180.50. Any discrepancy between negotiated rates/standard charges and billed amounts may constitute a violation of federal disclosure mandates.
+
+2) No Surprises Act (42 U.S.C. § 300gg-131 et seq.):
+   Please provide Good Faith Estimate and out-of-network reconciliation where applicable. Failure to comply with dispute-resolution frameworks may be reported to CMS for further enforcement review.
 
 I request a written reconciliation that addresses coding accuracy, duplicate or unbundled services, and consistency with posted standard charges (where required), plan allowed amounts, and applicable protections under the No Surprises Act for qualifying scenarios. The following line items are inconsistent with Medicare-aligned benchmarks and/or this facility's lower historical percentiles for the same services:${items}
 
@@ -295,7 +302,9 @@ I specifically request:
 2. Reprocessing to the correct contracted / allowed amounts; removal of duplicate, upcoded, or medically unsupported entries where documented.
 3. A written explanation of how each allowed amount was determined, including cross-walk to any Good Faith Estimate and plan EOB.
 
-If not resolved within the timeframes in my plan documents and applicable state/federal rules, I will escalate to ${insurerName || "[insurer]"}, applicable external review, and regulatory channels as permitted.
+Under ERISA (29 U.S.C. § 1133) and applicable prompt-pay / consumer-protection timelines, I expect either a cured invoice or a detailed written response within 30 calendar days. Failure to respond may be interpreted as a bad-faith denial of transparency and appeal rights.
+
+A copy of this correspondence and your subsequent response will be maintained for potential submission to the U.S. Department of Health and Human Services (HHS), CMS, ${insurerName || "[insurer]"}, and relevant state regulatory agencies should this matter remain unresolved.
 
 Sincerely,
 ${patientName}

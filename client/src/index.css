@@ -28,3 +28,22 @@ body {
     transition: none;
   }
 }
+
+.scan-bar {
+  animation: scan-slide 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes scan-slide {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(220%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-bar {
+    animation: none;
+  }
+}
