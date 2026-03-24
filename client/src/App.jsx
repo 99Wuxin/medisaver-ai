@@ -479,8 +479,17 @@ function ComplianceFooterBadges() {
 }
 
 export default function App() {
+  const ANALYSIS_STEPS = [
+    "Matching CMS federal benchmark rates...",
+    "Checking hospital posted pricing references...",
+    "Detecting potential overcharge / unbundling risk...",
+    "Building statute-backed audit findings..."
+  ];
+
   const [demoScenario, setDemoScenario] = useState("high");
   const [loading, setLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const [patientName, setPatientName] = useState("Jane Doe");
@@ -488,10 +497,47 @@ export default function App() {
   const [letter, setLetter] = useState(null);
   const [letterLoading, setLetterLoading] = useState(false);
   const [billingLoadingPlan, setBillingLoadingPlan] = useState(null);
+  const loadingIntervalRef = useRef(null);
+
+  const startAuditLoading = useCallback(() => {
+    if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+    setLoading(true);
+    setLoadingProgress(8);
+    setLoadingStep(0);
+    loadingIntervalRef.current = setInterval(() => {
+      setLoadingProgress((prev) => {
+        const next = Math.min(92, prev + (prev < 40 ? 8 : prev < 70 ? 5 : 2));
+        const nextStep = next < 25 ? 0 : next < 50 ? 1 : next < 75 ? 2 : 3;
+        setLoadingStep(nextStep);
+        return next;
+      });
+    }, 450);
+  }, []);
+
+  const stopAuditLoading = useCallback(() => {
+    if (loadingIntervalRef.current) {
+      clearInterval(loadingIntervalRef.current);
+      loadingIntervalRef.current = null;
+    }
+    setLoadingProgress(100);
+    setLoadingStep(ANALYSIS_STEPS.length - 1);
+    setTimeout(() => {
+      setLoading(false);
+      setLoadingProgress(0);
+      setLoadingStep(0);
+    }, 180);
+  }, [ANALYSIS_STEPS.length]);
+
+  useEffect(
+    () => () => {
+      if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+    },
+    []
+  );
 
   const runDemo = useCallback(async () => {
     setError(null);
-    setLoading(true);
+    startAuditLoading();
     setLetter(null);
     try {
       const fd = new FormData();
@@ -501,9 +547,9 @@ export default function App() {
     } catch (e) {
       setError(e.message);
     } finally {
-      setLoading(false);
+      stopAuditLoading();
     }
-  }, [demoScenario]);
+  }, [demoScenario, startAuditLoading, stopAuditLoading]);
 
   const onDrop = useCallback(
     async (e) => {
@@ -511,7 +557,7 @@ export default function App() {
       const file = e.dataTransfer?.files?.[0];
       if (!file) return;
       setError(null);
-      setLoading(true);
+      startAuditLoading();
       setLetter(null);
       try {
         const fd = new FormData();
@@ -522,10 +568,10 @@ export default function App() {
       } catch (err) {
         setError(err.message);
       } finally {
-        setLoading(false);
+        stopAuditLoading();
       }
     },
-    [demoScenario]
+    [demoScenario, startAuditLoading, stopAuditLoading]
   );
 
   const onFileInput = useCallback(
@@ -533,7 +579,7 @@ export default function App() {
       const file = e.target.files?.[0];
       if (!file) return;
       setError(null);
-      setLoading(true);
+      startAuditLoading();
       setLetter(null);
       try {
         const fd = new FormData();
@@ -544,10 +590,10 @@ export default function App() {
       } catch (err) {
         setError(err.message);
       } finally {
-        setLoading(false);
+        stopAuditLoading();
       }
     },
-    [demoScenario]
+    [demoScenario, startAuditLoading, stopAuditLoading]
   );
 
   const generateLetter = useCallback(async () => {
@@ -772,6 +818,32 @@ export default function App() {
             {loading ? "Running…" : "Run audit (no file)"}
           </button>
 
+          {loading && (
+            <div className="mt-4 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
+              <div className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-blue-800">
+                <span>AI audit in progress</span>
+                <span>{loadingProgress}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-blue-100">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300"
+                  style={{ width: `${loadingProgress}%` }}
+                />
+              </div>
+              <ul className="mt-3 space-y-1.5 text-xs">
+                {ANALYSIS_STEPS.map((step, idx) => (
+                  <li
+                    key={step}
+                    className={idx <= loadingStep ? "font-medium text-blue-900" : "text-ink-500"}
+                  >
+                    {idx <= loadingStep ? "• " : "○ "}
+                    {step}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <SampleRiskReport />
 
           {error && (
@@ -803,6 +875,16 @@ export default function App() {
                 </div>
               </div>
 
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                  Potential savings estimator
+                </p>
+                <p className="mt-1 text-sm text-emerald-900">
+                  Based on detected pricing discrepancies, this bill may have room to reduce by{" "}
+                  <strong>{fmt(result.analysis.summary.potentialSavings)}</strong> after formal review.
+                </p>
+              </div>
+
               <div className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/90 to-indigo-50/70 p-3 text-xs leading-relaxed text-ink-800">
                 <p className="font-semibold text-brand-950">Authoritative price reference (CMS)</p>
                 <p className="mt-1">
@@ -823,6 +905,24 @@ export default function App() {
                   <ul className="mt-2 divide-y divide-slate-100">
                     {result.analysis.flags.slice(0, 6).map((f, i) => (
                       <li key={`${f.code}-${i}`} className="py-3 text-sm">
+                        {typeof f.reasonableEstimate === "number" && f.reasonableEstimate > 0 && (
+                          <div className="mb-2">
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                ((f.billed - f.reasonableEstimate) / f.reasonableEstimate) * 100 > 35
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-amber-100 text-amber-800"
+                              }`}
+                            >
+                              Risk flag: {f.code} billed{" "}
+                              {Math.max(
+                                0,
+                                Math.round(((f.billed - f.reasonableEstimate) / f.reasonableEstimate) * 100)
+                              )}
+                              % above benchmark estimate
+                            </span>
+                          </div>
+                        )}
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <span className="font-mono text-xs text-ink-600">{f.code}</span>
