@@ -209,6 +209,7 @@ app.post("/api/billing/checkout-session", async (c) => {
       mode: "subscription",
       "line_items[0][price]": priceId,
       "line_items[0][quantity]": 1,
+      "payment_method_types[0]": "card",
       customer: body.customerId,
       customer_email: body.customerEmail,
       success_url: successUrl,
