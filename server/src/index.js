@@ -7,6 +7,15 @@ const app = new Hono();
 // 启用跨域
 app.use("/api/*", cors());
 
+// 根路径说明，避免直接访问域名时 404
+app.get("/", (c) => {
+  return c.json({
+    ok: true,
+    service: "medisaver-ai-api",
+    endpoints: ["/api/health", "/api/analyze", "/api/analyze-json", "/api/appeal"]
+  });
+});
+
 // 健康检查
 app.get("/api/health", (c) => {
   return c.json({ ok: true, service: "medisaver-ai-api" });
