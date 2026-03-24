@@ -21,23 +21,64 @@ function withNoise(value, pct = 0.25) {
   return Math.max(1, Math.round(value * factor));
 }
 
+function pickRandom(list) {
+  return list[randomInt(0, list.length - 1)];
+}
+
+function pickManyUnique(list, count) {
+  const copy = [...list];
+  const out = [];
+  while (copy.length && out.length < count) {
+    const idx = randomInt(0, copy.length - 1);
+    out.push(copy[idx]);
+    copy.splice(idx, 1);
+  }
+  return out;
+}
+
 function fallbackDemoScenario(demoScenario) {
-  const high = [
-    { code: "71046", description: "Chest X-ray 2 views", quantity: 1, billed: withNoise(1840, 0.45) },
-    { code: "80053", description: "CMP — comprehensive metabolic", quantity: 1, billed: withNoise(890, 0.4) },
-    { code: "85025", description: "CBC automated", quantity: 1, billed: withNoise(195, 0.35) },
-    { code: "99213", description: "Office visit est patient", quantity: 1, billed: withNoise(485, 0.4) },
-    { code: "36415", description: "Blood draw", quantity: 1, billed: withNoise(85, 0.35) }
+  const facilities = [
+    "General Metro Hospital",
+    "Riverbend Medical Center",
+    "Summit Valley Health",
+    "Lakeside Regional Hospital"
   ];
-  const low = [
-    { code: "99213", description: "Office visit est patient", quantity: 1, billed: withNoise(265, 0.3) },
-    { code: "36415", description: "Blood draw", quantity: 1, billed: withNoise(45, 0.3) }
+  const patientAliases = [
+    "DEMO PATIENT",
+    "TEST MEMBER",
+    "SAMPLE PERSON",
+    "CASE EXAMPLE"
   ];
+  const servicePool = [
+    { code: "71046", description: "Chest X-ray 2 views", base: 1840, high: true },
+    { code: "80053", description: "CMP — comprehensive metabolic", base: 890, high: true },
+    { code: "85025", description: "CBC automated", base: 195, high: false },
+    { code: "99213", description: "Office visit est patient", base: 485, high: false },
+    { code: "36415", description: "Blood draw", base: 85, high: false },
+    { code: "93000", description: "Electrocardiogram routine", base: 720, high: true },
+    { code: "70450", description: "CT head/brain without contrast", base: 2650, high: true },
+    { code: "81001", description: "Urinalysis automated with microscopy", base: 140, high: false },
+    { code: "96372", description: "Therapeutic injection administration", base: 240, high: false },
+    { code: "72100", description: "Lumbar spine X-ray", base: 1320, high: true }
+  ];
+
+  const count = demoScenario === "high" ? randomInt(4, 6) : randomInt(2, 3);
+  const selected = pickManyUnique(servicePool, count).map((item) => {
+    const noisePct = demoScenario === "high" ? 0.45 : 0.3;
+    const multiplier = demoScenario === "high" && item.high ? randomInt(1, 2) : 1;
+    return {
+      code: item.code,
+      description: item.description,
+      quantity: multiplier,
+      billed: withNoise(item.base * multiplier, noisePct)
+    };
+  });
+
   return {
-    facilityName: "General Metro Hospital",
-    patientName: "DEMO PATIENT",
+    facilityName: pickRandom(facilities),
+    patientName: pickRandom(patientAliases),
     statementDate: `2025-02-${String(randomInt(10, 28)).padStart(2, "0")}`,
-    lineItems: demoScenario === "high" ? high : low
+    lineItems: selected
   };
 }
 
@@ -66,7 +107,8 @@ async function generateWithGemini(env, demoScenario) {
   const apiKey = env?.GEMINI_API_KEY;
   if (!apiKey) return null;
 
-  const model = env?.GEMINI_MODEL || "gemini-1.5-flash";
+  const model = env?.GEMINI_MODEL || "gemini-2.5-flash";
+  const variationToken = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const prompt = `Generate ONE synthetic US medical bill JSON object for audit testing.
 Requirements:
 - Output ONLY valid JSON (no markdown).
@@ -78,7 +120,9 @@ Requirements:
   "lineItems": [{ "code":"CPT/HCPCS", "description":"string", "quantity":number, "billed":number }]
 }
 - Scenario: ${demoScenario === "high" ? "high billed amount with 4-6 lines" : "small bill with 2-3 lines"}.
-- Keep all values realistic but varied each run.`;
+- IMPORTANT: make this case materially different from previous generations: use different CPT/HCPCS combinations, different descriptions, different facility and patient alias.
+- Keep all values realistic but varied each run.
+- Use this variation token to force uniqueness: ${variationToken}`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,

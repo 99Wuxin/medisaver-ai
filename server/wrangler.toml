@@ -3,7 +3,7 @@ main = "src/index.js"
 compatibility_date = "2026-03-23"
 
 [vars]
-GEMINI_MODEL = "gemini-1.5-flash"
+GEMINI_MODEL = "gemini-2.5-flash"
 # Secret values are NOT stored in wrangler.toml.
 # Configure in Cloudflare: `wrangler secret put GEMINI_API_KEY`
 # For local `wrangler dev`, add to `.dev.vars` (not committed):

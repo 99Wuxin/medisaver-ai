@@ -26,7 +26,7 @@ not_found_handling = "single-page-application"
 STRIPE_PRICE_BASIC = "price_1TEMLBHv9HY3JHstELZkVneu"
 STRIPE_PRICE_PROTECTOR = "price_1TEMLPHv9HY3JHstpCyVSBBy"
 STRIPE_PRICE_FAMILY = "price_1TEMLZHv9HY3JHst620su2sF"
-GEMINI_MODEL = "gemini-1.5-flash"
+GEMINI_MODEL = "gemini-2.5-flash"
 
 # Secret values are NOT stored in wrangler.toml.
 # Configure in Cloudflare: `wrangler secret put GEMINI_API_KEY`
