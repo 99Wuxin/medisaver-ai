@@ -103,6 +103,17 @@ function coerceGeminiOutput(parsed, demoScenario) {
   };
 }
 
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
 async function generateWithGemini(env, demoScenario) {
   const apiKey = env?.GEMINI_API_KEY;
   if (!apiKey) return null;
@@ -151,11 +162,77 @@ Requirements:
   return coerceGeminiOutput(parsed, demoScenario);
 }
 
+async function extractFromDocumentWithGemini(buffer, mimeType, env, demoScenario) {
+  if (!buffer) return null;
+  const apiKey = env?.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  const model = env?.GEMINI_MODEL || "gemini-2.5-flash";
+  const effectiveMimeType = mimeType || "application/octet-stream";
+  const prompt = `You are extracting structured billing line-items from a medical bill document.
+Return ONLY valid JSON with this exact schema:
+{
+  "facilityName": "string",
+  "patientName": "string",
+  "statementDate": "YYYY-MM-DD",
+  "lineItems": [{ "code":"CPT/HCPCS", "description":"string", "quantity":number, "billed":number }]
+}
+Rules:
+- Extract what exists in the document (image or PDF); do not invent extra rows.
+- If a code is missing but a line item exists, set code to "UNKNOWN".
+- quantity must be >= 1.
+- billed must be numeric (remove currency symbols/commas).
+- Keep 2-8 lineItems when possible.
+- Output JSON only, no markdown fences.`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        generationConfig: {
+          temperature: 0.2,
+          topP: 0.9,
+          topK: 20
+        },
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              {
+                inline_data: {
+                  mime_type: effectiveMimeType,
+                  data: arrayBufferToBase64(buffer)
+                }
+              }
+            ]
+          }
+        ]
+      })
+    }
+  );
+
+  if (!res.ok) return null;
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) return null;
+
+  const cleaned = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+  const parsed = JSON.parse(cleaned);
+  return coerceGeminiOutput(parsed, demoScenario);
+}
+
 /**
  * Mock "OCR" — demo returns a plausible bill if image present; otherwise uses body lines.
  */
-export async function mockExtractLineItems(_buffer, demoScenario, env) {
+export async function mockExtractLineItems(buffer, demoScenario, env, mimeType) {
   try {
+    // If a file is uploaded, prioritize real extraction from document content.
+    const extracted = await extractFromDocumentWithGemini(buffer, mimeType, env, demoScenario);
+    if (extracted) return extracted;
+
+    // If no file or extraction failed, generate synthetic scenario.
     const generated = await generateWithGemini(env, demoScenario);
     if (generated) return generated;
   } catch {
