@@ -9,9 +9,9 @@ not_found_handling = "single-page-application"
 
 [vars]
 # Local dev: each plan must use a different Stripe Price ID (copy from each product in Dashboard).
-STRIPE_PRICE_BASIC = "price_1TELX7Hv9HY3JHstSnAPADBm"
-STRIPE_PRICE_PROTECTOR = "price_1TELY9Hv9HY3JHstBtnOo8s0"
-STRIPE_PRICE_FAMILY = "price_1TELYOHv9HY3JHstSZZHqhqe"
+STRIPE_PRICE_BASIC = "price_1TEMLBHv9HY3JHstELZkVneu"
+STRIPE_PRICE_PROTECTOR = "price_1TEMLPHv9HY3JHstpCyVSBBy"
+STRIPE_PRICE_FAMILY = "price_1TEMLZHv9HY3JHst620su2sF"
 
 
 # If you want object storage later, uncomment and configure R2.
