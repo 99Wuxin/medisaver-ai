@@ -2,8 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Desktop readability: scale rem-based typography (Tailwind text-*) on large screens.
+ * Mobile stays at 16px root; laptop+ uses 18px so body copy and UI labels read larger.
+ */
+html {
+  font-size: 16px;
+}
+
+@media (min-width: 1024px) {
+  html {
+    font-size: 18px;
+  }
+}
+
 body {
-  @apply min-h-screen;
+  @apply min-h-screen text-base;
 }
 
 .reveal-slide {
