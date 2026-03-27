@@ -498,60 +498,6 @@ function LegalContrastModule() {
   );
 }
 
-function SampleRiskReport() {
-  const rows = [
-    {
-      code: "99285",
-      item: "Emergency department visit — high severity (E/M)",
-      issue: "Potential E/M level mismatch vs documented acuity",
-      level: "High",
-      reason:
-        "Detected: charged as ER level 5, but vitals/acuity pattern aligns with level 3 under common CMS ED guidelines (illustrative)."
-    },
-    {
-      code: "93000",
-      item: "Routine ECG",
-      issue: "Charge exceeds benchmark percentile band",
-      level: "Medium",
-      reason: "Line amount sits above locality fee-schedule reference band for this code family."
-    },
-    {
-      code: "96372",
-      item: "Injection administration",
-      issue: "Possible duplicate administration entry",
-      level: "Medium",
-      reason: "Same date-of-service administration appears twice with no modifier separation."
-    }
-  ];
-  return (
-    <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
-          De-identified sample report preview
-        </h3>
-      </div>
-      <p className="mt-2 text-xs leading-relaxed text-ink-600">
-        This is what the audit engine highlights: compliance risk points and statute hooks, not just total price.
-      </p>
-      <ul className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-100 bg-slate-50/60 px-3">
-        {rows.map((r) => (
-          <li key={r.code} className="py-3 text-xs">
-            <p className="font-mono text-[11px] text-ink-500">{r.code}</p>
-            <p className="font-medium text-ink-800">{r.item}</p>
-            <p className="mt-1 text-ink-600">{r.issue}</p>
-            {r.reason ? (
-              <p className="mt-1.5 text-[11px] leading-relaxed text-ink-500">{r.reason}</p>
-            ) : null}
-            <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
-              {r.level} compliance risk
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
 function SuccessCaseLibrary() {
   return (
     <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:mt-14 sm:p-6">
@@ -1172,8 +1118,6 @@ export default function App() {
               </ul>
             </div>
           )}
-
-          <SampleRiskReport />
 
           {error && (
             <p className="mt-3 text-sm text-red-600" role="alert">
