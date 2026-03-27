@@ -529,9 +529,6 @@ function SampleRiskReport() {
         <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
           De-identified sample report preview
         </h3>
-        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-800">
-          Preview before purchase
-        </span>
       </div>
       <p className="mt-2 text-xs leading-relaxed text-ink-600">
         This is what the audit engine highlights: compliance risk points and statute hooks, not just total price.
@@ -1197,13 +1194,13 @@ export default function App() {
                   </p>
                 </div>
                 <div className="rounded-xl border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800">
                     Potential overcharge (est.)
                   </p>
-                  <p className="text-3xl font-extrabold text-amber-700 sm:text-4xl">
+                  <p className="text-2xl font-extrabold text-amber-700 sm:text-3xl">
                     {fmt(result.analysis.summary.potentialSavings)}
                   </p>
-                  <p className="text-sm font-semibold text-amber-900">~{savingsPct}% of billed</p>
+                  <p className="text-xs font-semibold text-amber-900">~{savingsPct}% of billed</p>
                 </div>
               </div>
 
