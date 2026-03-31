@@ -39,9 +39,12 @@ GEMINI_MODEL = "gemini-2.5-flash"
 # binding = "R2_BUCKET"
 # bucket_name = "medisaver-assets"
 
-# Auth: create DB with `wrangler d1 create statutebill-users`, paste database_id below, then:
-# `wrangler d1 migrations apply statutebill-users --remote` (and --local for dev)
-[[d1_databases]]
-binding = "DB"
-database_name = "statutebill-users"
-database_id = "00000000-0000-0000-0000-000000000001"
+# D1 (email/password auth): do NOT commit a fake database_id — deploy will fail (API error 10181).
+# 1) `wrangler d1 create statutebill-users` → copy the real database_id (UUID).
+# 2) Uncomment and paste:
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "statutebill-users"
+# database_id = "<your-uuid-from-step-1>"
+# 3) `wrangler d1 migrations apply statutebill-users --remote`
+# Or bind DB in Workers dashboard → Settings → D1 database bindings (same binding name: DB).
