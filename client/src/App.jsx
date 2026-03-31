@@ -21,11 +21,13 @@ async function fetchAppeal(analysis, patientName, insurerName) {
   return res.json();
 }
 
-async function createCheckoutSession(planId) {
+const ONE_OFF_STRIPE_PRICE_ID = "price_1TGtHmHv9HY3JHstF6jJqahF";
+
+async function createCheckoutSession(planId, priceId) {
   const res = await fetch("/api/billing/checkout-session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ planId })
+    body: JSON.stringify({ planId, priceId })
   });
   const data = await res.json();
   if (!res.ok) {
@@ -817,7 +819,8 @@ export default function App() {
     setError(null);
     setBillingLoadingPlan(planId);
     try {
-      const session = await createCheckoutSession(planId);
+      const priceId = planId === "one-off" ? ONE_OFF_STRIPE_PRICE_ID : undefined;
+      const session = await createCheckoutSession(planId, priceId);
       if (session?.url) {
         window.location.href = session.url;
       }
