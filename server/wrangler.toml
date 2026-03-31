@@ -14,5 +14,8 @@ GEMINI_MODEL = "gemini-2.5-flash"
 # binding = 'R2_BUCKET'
 # bucket_name = 'medisaver-assets'
 
-# D1 auth: see root wrangler.toml — uncomment [[d1_databases]] with a real database_id from
-# `wrangler d1 create statutebill-users` (placeholder IDs break deploy).
+# D1 (same as root wrangler.toml)
+[[d1_databases]]
+binding = "DB"
+database_name = "statutebill-users"
+database_id = "47000a96-019b-497a-a0db-f73fce97922f"
