@@ -38,3 +38,10 @@ GEMINI_MODEL = "gemini-2.5-flash"
 # [[r2_buckets]]
 # binding = "R2_BUCKET"
 # bucket_name = "medisaver-assets"
+
+# Auth: create DB with `wrangler d1 create statutebill-users`, paste database_id below, then:
+# `wrangler d1 migrations apply statutebill-users --remote` (and --local for dev)
+[[d1_databases]]
+binding = "DB"
+database_name = "statutebill-users"
+database_id = "00000000-0000-0000-0000-000000000001"

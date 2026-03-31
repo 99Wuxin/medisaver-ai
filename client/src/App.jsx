@@ -11,10 +11,19 @@ function getStripeCustomerHeaders() {
   return id ? { "x-stripe-customer-id": id } : {};
 }
 
+function getApiHeaders() {
+  const h = { ...getStripeCustomerHeaders() };
+  if (typeof localStorage !== "undefined") {
+    const t = localStorage.getItem("auth_token");
+    if (t) h.Authorization = `Bearer ${t}`;
+  }
+  return h;
+}
+
 async function analyzeBill(formData) {
   const res = await fetch("/api/analyze", {
     method: "POST",
-    headers: getStripeCustomerHeaders(),
+    headers: getApiHeaders(),
     body: formData
   });
   if (!res.ok) throw new Error("Analysis failed. Try again.");
@@ -26,7 +35,7 @@ async function fetchAppeal(analysis, patientName, insurerName) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...getStripeCustomerHeaders()
+      ...getApiHeaders()
     },
     body: JSON.stringify({ analysis, patientName, insurerName })
   });
@@ -656,6 +665,158 @@ function ComplianceFooterBadges() {
   );
 }
 
+function AccountPage() {
+  const initialMode =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("mode") === "register"
+      ? "register"
+      : "login";
+  const [mode, setMode] = useState(initialMode);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    if (mode === "register" && password !== confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const url = mode === "register" ? "/api/auth/register" : "/api/auth/login";
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Request failed.");
+      localStorage.setItem("auth_token", data.token);
+      localStorage.setItem("auth_user", JSON.stringify(data.user));
+      window.location.href = "/";
+    } catch (err) {
+      setError(err.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-slate-50 to-indigo-50 px-5 py-10">
+      <div className="mx-auto max-w-md">
+        <a href="/" className="inline-block">
+          <BrandLogo />
+        </a>
+        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex rounded-xl border border-slate-200 p-0.5 text-sm font-semibold">
+            <button
+              type="button"
+              className={`flex-1 rounded-lg py-2 transition ${
+                mode === "login" ? "bg-brand-950 text-white" : "text-ink-600 hover:bg-slate-50"
+              }`}
+              onClick={() => {
+                setMode("login");
+                setError(null);
+              }}
+            >
+              Log in
+            </button>
+            <button
+              type="button"
+              className={`flex-1 rounded-lg py-2 transition ${
+                mode === "register" ? "bg-brand-950 text-white" : "text-ink-600 hover:bg-slate-50"
+              }`}
+              onClick={() => {
+                setMode("register");
+                setError(null);
+              }}
+            >
+              Register
+            </button>
+          </div>
+          <h1 className="mt-6 font-display text-xl font-bold text-brand-950">
+            {mode === "login" ? "Welcome back" : "Create an account"}
+          </h1>
+          <p className="mt-1 text-sm text-ink-600">
+            {mode === "login"
+              ? "Sign in with your email and password."
+              : "Use a valid email and at least 8 characters for your password."}
+          </p>
+          <form className="mt-5 space-y-4" onSubmit={submit}>
+            <div>
+              <label htmlFor="acct-email" className="block text-xs font-semibold uppercase tracking-wide text-ink-500">
+                Email
+              </label>
+              <input
+                id="acct-email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label htmlFor="acct-pass" className="block text-xs font-semibold uppercase tracking-wide text-ink-500">
+                Password
+              </label>
+              <input
+                id="acct-pass"
+                type="password"
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                required
+                minLength={mode === "register" ? 8 : undefined}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+            </div>
+            {mode === "register" ? (
+              <div>
+                <label htmlFor="acct-confirm" className="block text-xs font-semibold uppercase tracking-wide text-ink-500">
+                  Confirm password
+                </label>
+                <input
+                  id="acct-confirm"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={8}
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                />
+              </div>
+            ) : null}
+            {error ? (
+              <p className="text-sm text-red-600" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-gradient-to-r from-brand-950 to-blue-700 py-3 text-sm font-bold text-white shadow-sm disabled:opacity-60"
+            >
+              {loading ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}
+            </button>
+          </form>
+          <p className="mt-4 text-center text-xs text-ink-500">
+            <a href="/" className="font-semibold text-blue-700 underline decoration-blue-200">
+              Back to home
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BillingSuccessPage() {
   const [phase, setPhase] = useState("loading");
   const [detail, setDetail] = useState(null);
@@ -777,6 +938,7 @@ function BillingCancelPage() {
 export default function App() {
   if (typeof window !== "undefined") {
     const p = window.location.pathname;
+    if (p === "/account") return <AccountPage />;
     if (p === "/billing/success") return <BillingSuccessPage />;
     if (p === "/billing/cancel") return <BillingCancelPage />;
   }
@@ -816,6 +978,8 @@ export default function App() {
   const [letterLoading, setLetterLoading] = useState(false);
   const [billingLoadingPlan, setBillingLoadingPlan] = useState(null);
   const [billingLinked, setBillingLinked] = useState(false);
+  const [authUser, setAuthUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const loadingIntervalRef = useRef(null);
 
   const startAuditLoading = useCallback(() => {
@@ -860,6 +1024,30 @@ export default function App() {
     } catch {
       //
     }
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      setAuthChecked(true);
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d) => {
+        if (!cancelled) setAuthUser(d.user);
+      })
+      .catch(() => {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_user");
+      })
+      .finally(() => {
+        if (!cancelled) setAuthChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const runDemo = useCallback(async () => {
@@ -977,6 +1165,12 @@ export default function App() {
     }
   }, []);
 
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("auth_user");
+    setAuthUser(null);
+  }, []);
+
   const steps = [
     {
       title: "Upload",
@@ -1006,6 +1200,28 @@ export default function App() {
             <a href="#pricing" className="transition-colors hover:text-indigo-600">
               Plans
             </a>
+            {authChecked && authUser ? (
+              <>
+                <span className="max-w-[12rem] truncate text-xs text-ink-500" title={authUser.email}>
+                  {authUser.email}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-ink-700 transition hover:bg-slate-50"
+                >
+                  Log out
+                </button>
+              </>
+            ) : null}
+            {authChecked && !authUser ? (
+              <a
+                href="/account"
+                className="rounded-lg bg-brand-950 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-900"
+              >
+                Sign in
+              </a>
+            ) : null}
           </nav>
           <button
             type="button"
@@ -1033,6 +1249,32 @@ export default function App() {
             >
               Plans
             </a>
+            {authChecked && authUser ? (
+              <>
+                <p className="mt-1 truncate py-1 text-xs text-ink-500" title={authUser.email}>
+                  {authUser.email}
+                </p>
+                <button
+                  type="button"
+                  className="w-full rounded-lg border border-slate-200 py-2 text-sm font-semibold text-ink-700"
+                  onClick={() => {
+                    handleLogout();
+                    setMobileNavOpen(false);
+                  }}
+                >
+                  Log out
+                </button>
+              </>
+            ) : null}
+            {authChecked && !authUser ? (
+              <a
+                href="/account"
+                className="mt-2 block rounded-xl border border-brand-950 py-3 text-center text-sm font-semibold text-brand-950"
+                onClick={() => setMobileNavOpen(false)}
+              >
+                Sign in / Register
+              </a>
+            ) : null}
             <a
               href="#demo"
               className="mt-2 block rounded-xl bg-brand-950 py-3 text-center text-sm font-semibold text-white"

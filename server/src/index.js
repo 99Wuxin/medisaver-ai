@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { analyzeBill, buildAppealLetter, mockExtractLineItems } from "./analysis.js";
+import { authRegister, authLogin, authMe } from "./auth.js";
 
 const app = new Hono();
 
@@ -215,8 +216,18 @@ async function getUserSubscription(c) {
   }
 }
 
-// 启用跨域
-app.use("/api/*", cors());
+app.use(
+  "/api/*",
+  cors({
+    origin: "*",
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"]
+  })
+);
+
+app.post("/api/auth/register", authRegister);
+app.post("/api/auth/login", authLogin);
+app.get("/api/auth/me", authMe);
 
 app.get("/", async (c) => {
   if (c.env?.ASSETS) {

@@ -13,3 +13,9 @@ GEMINI_MODEL = "gemini-2.5-flash"
 # [[r2_buckets]]
 # binding = 'R2_BUCKET'
 # bucket_name = 'medisaver-assets'
+
+# Auth (same database_id as root wrangler.toml after `wrangler d1 create statutebill-users`)
+[[d1_databases]]
+binding = "DB"
+database_name = "statutebill-users"
+database_id = "00000000-0000-0000-0000-000000000001"
