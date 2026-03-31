@@ -693,8 +693,13 @@ function AccountPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Request failed.");
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Request failed (${res.status}).`);
+      }
+      if (!res.ok) throw new Error(data?.error || "Request failed.");
       localStorage.setItem("auth_token", data.token);
       localStorage.setItem("auth_user", JSON.stringify(data.user));
       window.location.href = "/";

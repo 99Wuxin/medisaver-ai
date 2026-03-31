@@ -200,8 +200,23 @@ export async function authRegister(c) {
     if (/unique|constraint|already exists/i.test(msg)) {
       return c.json({ error: "An account with this email already exists" }, 409);
     }
-    console.error(e);
-    return c.json({ error: "Could not create account" }, 500);
+    console.error("[auth register]", e);
+    if (/no such table|does not exist/i.test(msg)) {
+      return c.json(
+        {
+          error:
+            "Database is not migrated yet. From your project folder run: wrangler d1 migrations apply statutebill-users --remote (use --config wrangler.toml if needed)."
+        },
+        500
+      );
+    }
+    return c.json(
+      {
+        error:
+          "Could not create account. If this persists, confirm D1 binding DB and that migrations ran on the same database."
+      },
+      500
+    );
   }
 
   const now = Math.floor(Date.now() / 1000);
