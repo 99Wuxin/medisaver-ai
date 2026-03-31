@@ -36,6 +36,75 @@ async function stripeRequest(c, path, payload) {
   return data;
 }
 
+async function stripeGet(c, path) {
+  const stripeSecretKey = c.env?.STRIPE_SECRET_KEY;
+  if (!stripeSecretKey) {
+    throw new Error("STRIPE_NOT_CONFIGURED");
+  }
+  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
+    headers: { Authorization: `Bearer ${stripeSecretKey}` }
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const msg = data?.error?.message || "Stripe request failed";
+    throw new Error(msg);
+  }
+  return data;
+}
+
+function hexFromBuffer(buf) {
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function timingSafeEqualHex(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+/** Parse Stripe-Signature header (supports multiple v1 signatures). */
+function parseStripeSignatureHeader(signatureHeader) {
+  const parts = signatureHeader.split(",").map((p) => p.trim());
+  let t = null;
+  const v1 = [];
+  for (const p of parts) {
+    const idx = p.indexOf("=");
+    if (idx === -1) continue;
+    const key = p.slice(0, idx);
+    const val = p.slice(idx + 1);
+    if (key === "t") t = val;
+    else if (key === "v1") v1.push(val);
+  }
+  return { t, v1 };
+}
+
+/** Verify Stripe webhook signature (Stripe-Signature header). */
+async function verifyStripeWebhookSignature(rawBody, signatureHeader, secret) {
+  if (!signatureHeader || !secret) return false;
+  const { t, v1 } = parseStripeSignatureHeader(signatureHeader);
+  if (!t || v1.length === 0) return false;
+  const now = Math.floor(Date.now() / 1000);
+  const ts = Number(t);
+  if (Number.isNaN(ts) || Math.abs(now - ts) > 300) {
+    return false;
+  }
+  const signedPayload = `${t}.${rawBody}`;
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sigBuf = await crypto.subtle.sign("HMAC", key, encoder.encode(signedPayload));
+  const expectedHex = hexFromBuffer(sigBuf);
+  return v1.some((candidate) => timingSafeEqualHex(candidate, expectedHex));
+}
+
 function getStripePriceId(c, planId, explicitPriceId) {
   if (explicitPriceId) return explicitPriceId;
   const map = {
@@ -68,6 +137,21 @@ function assertDistinctPriceIds(c) {
   return null;
 }
 
+async function hasCompletedOneOffCheckout(c, stripeCustomerId) {
+  try {
+    const list = await stripeGet(
+      c,
+      `checkout/sessions?customer=${encodeURIComponent(stripeCustomerId)}&limit=20`
+    );
+    const sessions = list?.data || [];
+    return sessions.some(
+      (s) => s.mode === "payment" && s.payment_status === "paid"
+    );
+  } catch {
+    return false;
+  }
+}
+
 async function getUserSubscription(c) {
   const forceSubscription = c.env?.REQUIRE_SUBSCRIPTION === "true";
   const localPlan = c.req.header("x-subscription-plan") || "none";
@@ -96,20 +180,29 @@ async function getUserSubscription(c) {
   }
 
   try {
-    const stripe = await stripeRequest(c, "subscriptions", {
-      customer: stripeCustomerId,
-      status: "all",
-      limit: 5
-    });
+    const stripe = await stripeGet(
+      c,
+      `subscriptions?customer=${encodeURIComponent(stripeCustomerId)}&status=all&limit=10`
+    );
     const active = (stripe.data || []).find((s) =>
       ["active", "trialing", "past_due"].includes(s.status)
     );
+    if (active) {
+      return {
+        id: c.req.header("x-user-id") || "anonymous",
+        plan: active?.items?.data?.[0]?.price?.id || "none",
+        status: active?.status || "inactive",
+        stripeCustomerId,
+        isSubscribed: true
+      };
+    }
+    const oneOff = await hasCompletedOneOffCheckout(c, stripeCustomerId);
     return {
       id: c.req.header("x-user-id") || "anonymous",
-      plan: active?.items?.data?.[0]?.price?.id || "none",
-      status: active?.status || "inactive",
+      plan: oneOff ? "one-off" : "none",
+      status: oneOff ? "paid" : "inactive",
       stripeCustomerId,
-      isSubscribed: Boolean(active)
+      isSubscribed: oneOff
     };
   } catch {
     return {
@@ -216,7 +309,8 @@ app.post("/api/billing/checkout-session", async (c) => {
       .trim()
       .toLowerCase();
     const origin = c.req.header("origin") || "https://statutebill.com";
-    const successUrl = body.successUrl || `${origin}/billing/success`;
+    const successUrl =
+      body.successUrl || `${origin}/billing/success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = body.cancelUrl || `${origin}/billing/cancel`;
 
     const dupMsg = assertDistinctPriceIds(c);
@@ -264,6 +358,65 @@ app.post("/api/billing/checkout-session", async (c) => {
     });
   } catch (e) {
     return c.json({ error: e.message || "Checkout session failed" }, 500);
+  }
+});
+
+app.post("/api/billing/verify-session", async (c) => {
+  try {
+    const body = await c.req.json();
+    const sessionId = String(body.sessionId || "").trim();
+    if (!sessionId || !sessionId.startsWith("cs_")) {
+      return c.json({ error: "sessionId required (Stripe checkout session id)" }, 400);
+    }
+    const session = await stripeGet(c, `checkout/sessions/${encodeURIComponent(sessionId)}`);
+    if (session.payment_status !== "paid") {
+      return c.json(
+        { error: "Payment not completed", payment_status: session.payment_status },
+        402
+      );
+    }
+    const planId = session.metadata?.plan_id || "unknown";
+    const priceId = session.metadata?.price_id || null;
+    return c.json({
+      ok: true,
+      customerId: session.customer,
+      planId,
+      priceId,
+      mode: session.mode,
+      subscriptionId: session.subscription || null
+    });
+  } catch (e) {
+    return c.json({ error: e.message || "Verify failed" }, 500);
+  }
+});
+
+app.post("/api/billing/webhook", async (c) => {
+  try {
+    const rawBody = await c.req.text();
+    const sig = c.req.header("stripe-signature");
+    const secret = c.env?.STRIPE_WEBHOOK_SECRET;
+    if (!secret) {
+      return c.json({ error: "STRIPE_WEBHOOK_SECRET not configured" }, 500);
+    }
+    const ok = await verifyStripeWebhookSignature(rawBody, sig, secret);
+    if (!ok) {
+      return c.json({ error: "Invalid signature" }, 400);
+    }
+    let event;
+    try {
+      event = JSON.parse(rawBody);
+    } catch {
+      return c.json({ error: "Invalid JSON" }, 400);
+    }
+    if (event.type === "checkout.session.completed") {
+      const obj = event.data?.object;
+      console.log(
+        `[stripe webhook] checkout.session.completed id=${obj?.id} customer=${obj?.customer} mode=${obj?.mode}`
+      );
+    }
+    return c.json({ received: true });
+  } catch (e) {
+    return c.json({ error: e.message || "Webhook failed" }, 500);
   }
 });
 

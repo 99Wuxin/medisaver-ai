@@ -5,8 +5,18 @@ const fmt = (n) =>
     ? n.toLocaleString("en-US", { style: "currency", currency: "USD" })
     : "—";
 
+function getStripeCustomerHeaders() {
+  if (typeof localStorage === "undefined") return {};
+  const id = localStorage.getItem("stripe_customer_id");
+  return id ? { "x-stripe-customer-id": id } : {};
+}
+
 async function analyzeBill(formData) {
-  const res = await fetch("/api/analyze", { method: "POST", body: formData });
+  const res = await fetch("/api/analyze", {
+    method: "POST",
+    headers: getStripeCustomerHeaders(),
+    body: formData
+  });
   if (!res.ok) throw new Error("Analysis failed. Try again.");
   return res.json();
 }
@@ -14,7 +24,10 @@ async function analyzeBill(formData) {
 async function fetchAppeal(analysis, patientName, insurerName) {
   const res = await fetch("/api/appeal", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...getStripeCustomerHeaders()
+    },
     body: JSON.stringify({ analysis, patientName, insurerName })
   });
   if (!res.ok) throw new Error("Could not generate appeal letter.");
@@ -643,7 +656,131 @@ function ComplianceFooterBadges() {
   );
 }
 
+function BillingSuccessPage() {
+  const [phase, setPhase] = useState("loading");
+  const [detail, setDetail] = useState(null);
+  const [err, setErr] = useState(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sid = params.get("session_id");
+    if (!sid) {
+      setPhase("error");
+      setErr("Missing checkout session. Open the site from your email receipt or start checkout again.");
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/billing/verify-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId: sid })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Could not verify payment.");
+        if (cancelled) return;
+        if (data.customerId) {
+          localStorage.setItem("stripe_customer_id", data.customerId);
+        }
+        setDetail(data);
+        setPhase("ok");
+      } catch (e) {
+        if (!cancelled) {
+          setPhase("error");
+          setErr(e.message || "Verification failed.");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-slate-50 to-indigo-50 px-5 py-10">
+      <div className="mx-auto max-w-lg">
+        <a href="/" className="inline-block">
+          <BrandLogo />
+        </a>
+        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          {phase === "loading" ? (
+            <p className="text-sm text-ink-600">Confirming payment with Stripe…</p>
+          ) : null}
+          {phase === "error" ? (
+            <>
+              <h1 className="font-display text-xl font-bold text-brand-950">Could not confirm payment</h1>
+              <p className="mt-2 text-sm text-ink-600">{err}</p>
+              <a
+                href="/#pricing"
+                className="mt-4 inline-flex rounded-xl bg-gradient-to-r from-brand-950 to-blue-700 px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                Back to pricing
+              </a>
+            </>
+          ) : null}
+          {phase === "ok" && detail ? (
+            <>
+              <h1 className="font-display text-xl font-bold text-brand-950">Payment successful</h1>
+              <p className="mt-2 text-sm text-ink-600">
+                Your checkout session is paid. This browser is now linked to your Stripe customer for audits and
+                appeals when billing enforcement is enabled on the server.
+              </p>
+              <dl className="mt-4 space-y-2 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-ink-500">Plan</dt>
+                  <dd className="font-medium text-brand-950">{detail.planId}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-ink-500">Checkout mode</dt>
+                  <dd className="font-medium text-ink-800">{detail.mode}</dd>
+                </div>
+              </dl>
+              <a
+                href="/#demo"
+                className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-brand-950 to-blue-700 py-3 text-sm font-bold text-white shadow-sm"
+              >
+                Continue to compliance audit
+              </a>
+            </>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BillingCancelPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-slate-50 to-indigo-50 px-5 py-10">
+      <div className="mx-auto max-w-lg">
+        <a href="/" className="inline-block">
+          <BrandLogo />
+        </a>
+        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h1 className="font-display text-xl font-bold text-brand-950">Checkout canceled</h1>
+          <p className="mt-2 text-sm text-ink-600">
+            No charge was made. You can return to pricing whenever you are ready.
+          </p>
+          <a
+            href="/#pricing"
+            className="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white py-3 text-sm font-semibold text-ink-700 transition hover:border-indigo-300 hover:bg-indigo-50"
+          >
+            View plans
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  if (typeof window !== "undefined") {
+    const p = window.location.pathname;
+    if (p === "/billing/success") return <BillingSuccessPage />;
+    if (p === "/billing/cancel") return <BillingCancelPage />;
+  }
+
   const ANALYSIS_STEPS = [
     {
       en: "Extracting CPT / HCPCS codes from your bill…",
@@ -678,6 +815,7 @@ export default function App() {
   const [letter, setLetter] = useState(null);
   const [letterLoading, setLetterLoading] = useState(false);
   const [billingLoadingPlan, setBillingLoadingPlan] = useState(null);
+  const [billingLinked, setBillingLinked] = useState(false);
   const loadingIntervalRef = useRef(null);
 
   const startAuditLoading = useCallback(() => {
@@ -715,6 +853,14 @@ export default function App() {
     },
     []
   );
+
+  useEffect(() => {
+    try {
+      setBillingLinked(Boolean(localStorage.getItem("stripe_customer_id")));
+    } catch {
+      //
+    }
+  }, []);
 
   const runDemo = useCallback(async () => {
     setError(null);
@@ -988,6 +1134,12 @@ export default function App() {
           <p className="mt-1 text-sm text-ink-600">
             Upload optional—pick a sample scenario, drop a bill, or run the built-in illustration.
           </p>
+          {billingLinked ? (
+            <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/90 px-3 py-2 text-xs leading-relaxed text-emerald-950">
+              Billing linked: this browser will send your Stripe customer id with audits and appeals so paid access
+              can be enforced when the server sets <code className="font-mono">REQUIRE_SUBSCRIPTION=true</code>.
+            </p>
+          ) : null}
 
           <div className="mt-4 flex gap-2">
             <button
