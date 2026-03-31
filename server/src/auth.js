@@ -1,5 +1,6 @@
 const PBKDF2_ITERATIONS = 100000;
 const JWT_EXPIRY_SEC = 60 * 60 * 24 * 7; // 7 days
+const MIN_AUTH_JWT_SECRET_LENGTH = 10;
 
 function bytesToB64(bytes) {
   let bin = "";
@@ -157,9 +158,11 @@ export async function authRegister(c) {
     return c.json({ error: "Database not configured. Add D1 binding DB and run migrations." }, 503);
   }
   const secret = c.env?.AUTH_JWT_SECRET;
-  if (!secret || secret.length < 16) {
+  if (!secret || secret.length < MIN_AUTH_JWT_SECRET_LENGTH) {
     return c.json(
-      { error: "AUTH_JWT_SECRET missing or too short. Set wrangler secret (min 16 chars)." },
+      {
+        error: `AUTH_JWT_SECRET missing or too short. Set wrangler secret (min ${MIN_AUTH_JWT_SECRET_LENGTH} chars).`
+      },
       500
     );
   }
@@ -219,9 +222,11 @@ export async function authLogin(c) {
     return c.json({ error: "Database not configured. Add D1 binding DB and run migrations." }, 503);
   }
   const secret = c.env?.AUTH_JWT_SECRET;
-  if (!secret || secret.length < 16) {
+  if (!secret || secret.length < MIN_AUTH_JWT_SECRET_LENGTH) {
     return c.json(
-      { error: "AUTH_JWT_SECRET missing or too short. Set wrangler secret (min 16 chars)." },
+      {
+        error: `AUTH_JWT_SECRET missing or too short. Set wrangler secret (min ${MIN_AUTH_JWT_SECRET_LENGTH} chars).`
+      },
       500
     );
   }
