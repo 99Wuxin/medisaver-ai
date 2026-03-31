@@ -45,6 +45,39 @@ async function fetchAppeal(analysis, patientName, insurerName) {
 
 const ONE_OFF_STRIPE_PRICE_ID = "price_1TGtHmHv9HY3JHstF6jJqahF";
 
+const PENDING_CHECKOUT_KEY = "statutebill_pending_checkout";
+
+function setPendingCheckoutPlan(planId) {
+  try {
+    sessionStorage.setItem(PENDING_CHECKOUT_KEY, JSON.stringify({ planId }));
+  } catch {
+    //
+  }
+}
+
+function peekPendingCheckoutPlan() {
+  try {
+    const raw = sessionStorage.getItem(PENDING_CHECKOUT_KEY);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    return typeof o?.planId === "string" ? o.planId : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearPendingCheckout() {
+  try {
+    sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+  } catch {
+    //
+  }
+}
+
+function hasAuthToken() {
+  return typeof localStorage !== "undefined" && !!localStorage.getItem("auth_token");
+}
+
 async function createCheckoutSession(planId, priceId) {
   const res = await fetch("/api/billing/checkout-session", {
     method: "POST",
@@ -666,9 +699,12 @@ function ComplianceFooterBadges() {
 }
 
 function AccountPage() {
+  const params =
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const fromCheckout = params?.get("checkout") === "1";
   const initialMode =
     typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("mode") === "register"
+    (params?.get("mode") === "register" || fromCheckout)
       ? "register"
       : "login";
   const [mode, setMode] = useState(initialMode);
@@ -702,6 +738,24 @@ function AccountPage() {
       if (!res.ok) throw new Error(data?.error || "Request failed.");
       localStorage.setItem("auth_token", data.token);
       localStorage.setItem("auth_user", JSON.stringify(data.user));
+
+      const pendingPlan = peekPendingCheckoutPlan();
+      if (pendingPlan) {
+        try {
+          const priceId = pendingPlan === "one-off" ? ONE_OFF_STRIPE_PRICE_ID : undefined;
+          const session = await createCheckoutSession(pendingPlan, priceId);
+          clearPendingCheckout();
+          if (session?.url) {
+            window.location.href = session.url;
+            return;
+          }
+          throw new Error(session?.error || "Could not start checkout.");
+        } catch (checkoutErr) {
+          clearPendingCheckout();
+          throw checkoutErr;
+        }
+      }
+
       window.location.href = "/";
     } catch (err) {
       setError(err.message || "Something went wrong.");
@@ -716,6 +770,11 @@ function AccountPage() {
         <a href="/" className="inline-block">
           <BrandLogo />
         </a>
+        {fromCheckout ? (
+          <p className="mt-4 rounded-lg border border-blue-200 bg-blue-50/90 px-3 py-2 text-sm text-blue-950">
+            Sign in or create an account first—then you&apos;ll continue to secure Stripe checkout.
+          </p>
+        ) : null}
         <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex rounded-xl border border-slate-200 p-0.5 text-sm font-semibold">
             <button
@@ -1155,6 +1214,11 @@ export default function App() {
   }, [result]);
 
   const startSubscription = useCallback(async (planId) => {
+    if (!hasAuthToken()) {
+      setPendingCheckoutPlan(planId);
+      window.location.href = "/account?mode=register&checkout=1";
+      return;
+    }
     setError(null);
     setBillingLoadingPlan(planId);
     try {
