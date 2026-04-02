@@ -1,5 +1,9 @@
 import { cmsReference, hospitalHistorical, LOCALITY } from "../data/cmsReference.js";
-import { statutoryCitationsForLine } from "../data/statutes.js";
+import {
+  clausesToStatutoryCitations,
+  retrieveDefaultStatutes,
+  retrieveStatutesForFlag
+} from "./retrieval.js";
 
 function findReference(code) {
   const c = String(code).replace(/\s/g, "");
@@ -270,7 +274,15 @@ export function analyzeBill(parsed) {
             : "low";
 
     if (ref && billed > reasonable * 1.2) {
-      const statutes = statutoryCitationsForLine();
+      const retrievedClauses = retrieveStatutesForFlag({
+        code: row.code,
+        description: row.description,
+        severity,
+        billed,
+        reasonableEstimate: Math.round(reasonable * 100) / 100
+      });
+      const statutes = clausesToStatutoryCitations(retrievedClauses);
+      const clauseRefs = retrievedClauses.map((c) => c.id).join(", ");
       flags.push({
         code: row.code,
         description: row.description,
@@ -289,8 +301,15 @@ export function analyzeBill(parsed) {
               medianBilled: hist.medianBilled
             }
           : null,
+        retrievedClauses: retrievedClauses.map((c) => ({
+          id: c.id,
+          topic: c.topic,
+          reference: c.reference,
+          excerpt: c.excerpt
+        })),
         statutoryCitations: statutes,
         legalBasis: [
+          `Retrieved statutory excerpts (library ids: ${clauseRefs})—LLM audit uses only these texts plus system benchmarks.`,
           `Federal transparency & patient-protection framework: cite posted standard charges and Good Faith Estimate / plan documents where applicable (45 CFR Part 180; NSA at 42 U.S.C. § 300gg-131 et seq.; ERISA claims procedures at 29 U.S.C. §§ 1132–1133).`,
           `Pricing reasonableness: compare to Medicare / CMS-aligned benchmarks for CPT/HCPCS ${row.code} (${LOCALITY}).`,
           ref.source,
@@ -389,4 +408,127 @@ ${patientName}
 ---
 Disclaimer: Demo template only—not legal advice. Have a licensed professional review before sending.
 `.trim();
+}
+
+function stripJsonFences(text) {
+  return String(text || "")
+    .replace(/```json\s*/gi, "")
+    .replace(/```/g, "")
+    .trim();
+}
+
+/**
+ * Second pass: LLM legal narrative grounded ONLY in retrieved library excerpts (RAG-style).
+ * Numeric audit remains deterministic in analyzeBill.
+ */
+export async function llmLegalAudit(env, parsed, analysis) {
+  const apiKey = env?.GEMINI_API_KEY;
+  if (!apiKey) {
+    return { ok: false, skipped: true, reason: "GEMINI_API_KEY not configured" };
+  }
+
+  const model = env?.GEMINI_MODEL || "gemini-2.5-flash";
+  const byId = new Map();
+
+  for (const f of analysis.flags) {
+    for (const cl of f.retrievedClauses || []) {
+      if (cl?.id && !byId.has(cl.id)) byId.set(cl.id, cl);
+    }
+  }
+
+  if (analysis.flags.length === 0) {
+    for (const cl of retrieveDefaultStatutes()) {
+      if (!byId.has(cl.id)) byId.set(cl.id, cl);
+    }
+  }
+
+  const blocks = [...byId.values()].map(
+    (c) => `[${c.id}] ${c.topic} (${c.reference})\n${c.excerpt}`
+  );
+
+  const prompt = `You are a U.S. healthcare billing compliance reviewer.
+
+STRICT RULES:
+- Ground every legal or regulatory statement ONLY in the CONTEXT excerpts below. Each excerpt starts with [id].
+- Do NOT invent citations, CFR sections, USC sections, or case law not reflected in CONTEXT.
+- If an issue is not covered by CONTEXT, say the provided excerpts do not address that point.
+- Numeric amounts and CMS benchmarks in SYSTEM FACTS are authoritative—treat them as facts.
+
+CONTEXT:
+${blocks.join("\n\n")}
+
+SYSTEM FACTS:
+Facility: ${parsed.facilityName}
+Statement date: ${parsed.statementDate || "n/a"}
+Summary: ${JSON.stringify(analysis.summary)}
+
+FLAGGED LINES (JSON):
+${JSON.stringify(
+  analysis.flags.map((f) => ({
+    code: f.code,
+    description: f.description,
+    billed: f.billed,
+    reasonableEstimate: f.reasonableEstimate,
+    overchargeEstimate: f.overchargeEstimate,
+    severity: f.severity,
+    retrievedClauseIds: (f.retrievedClauses || []).map((c) => c.id)
+  }))
+)}
+
+Return ONLY valid JSON (no markdown):
+{
+  "overallAssessment": "string, 2-5 sentences; cite only [id] labels from CONTEXT",
+  "perFlag": [ { "code": "string", "assessment": "string, 1-3 sentences; cite only [id]" } ]
+}
+
+If there are zero flagged lines, set perFlag to [] and focus overallAssessment on general rights and disclosures described in CONTEXT only.`;
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          generationConfig: {
+            temperature: 0.2,
+            topP: 0.85,
+            topK: 20
+          },
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      }
+    );
+
+    if (!res.ok) {
+      return { ok: false, skipped: true, reason: `Gemini HTTP ${res.status}` };
+    }
+
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      return { ok: false, skipped: true, reason: "empty_model_response" };
+    }
+
+    const cleaned = stripJsonFences(text);
+    const parsedOut = JSON.parse(cleaned);
+    const overallAssessment =
+      typeof parsedOut?.overallAssessment === "string" ? parsedOut.overallAssessment : "";
+    const perFlag = Array.isArray(parsedOut?.perFlag) ? parsedOut.perFlag : [];
+
+    return {
+      ok: true,
+      overallAssessment,
+      perFlag: perFlag
+        .filter((p) => p && typeof p.code === "string")
+        .map((p) => ({
+          code: p.code,
+          assessment: String(p.assessment || "")
+        })),
+      contextIds: [...byId.keys()],
+      model
+    };
+  } catch (e) {
+    return { ok: false, skipped: true, reason: e?.message || "llm_audit_failed" };
+  }
 }

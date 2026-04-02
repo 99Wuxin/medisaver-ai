@@ -1,6 +1,11 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { analyzeBill, buildAppealLetter, mockExtractLineItems } from "./analysis.js";
+import {
+  analyzeBill,
+  buildAppealLetter,
+  llmLegalAudit,
+  mockExtractLineItems
+} from "./analysis.js";
 import { authRegister, authLogin, authMe } from "./auth.js";
 
 const app = new Hono();
@@ -261,6 +266,7 @@ app.post("/api/analyze", async (c) => {
     // 调用你分析逻辑中的 mock 函数
     const parsed = await mockExtractLineItems(buffer, demoScenario, c.env, billFile?.type);
     const analysis = analyzeBill(parsed);
+    analysis.llmLegalAudit = await llmLegalAudit(c.env, parsed, analysis);
 
     return c.json({ parsed, analysis });
   } catch (e) {
@@ -288,6 +294,7 @@ app.post("/api/analyze-json", async (c) => {
       lineItems: body.lineItems
     };
     const analysis = analyzeBill(parsed);
+    analysis.llmLegalAudit = await llmLegalAudit(c.env, parsed, analysis);
     return c.json({ parsed, analysis });
   } catch (e) {
     return c.json({ error: "Analysis failed" }, 500);

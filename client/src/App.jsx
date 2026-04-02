@@ -1021,8 +1021,8 @@ export default function App() {
       zh: "正在核对价格透明与意外账单规则…"
     },
     {
-      en: "Building statute-backed audit findings…",
-      zh: "正在生成法规依据的审计结论…"
+      en: "Retrieving statute excerpts from the legal library & running grounded LLM review…",
+      zh: "正在从法律库检索条款并进行基于上下文的 LLM 审计…"
     }
   ];
 
@@ -1213,6 +1213,16 @@ export default function App() {
     return out;
   }, [result]);
 
+  const llmAuditByCode = useMemo(() => {
+    const m = new Map();
+    for (const p of result?.analysis?.llmLegalAudit?.perFlag ?? []) {
+      if (p?.code && p?.assessment && !m.has(p.code)) {
+        m.set(p.code, p.assessment);
+      }
+    }
+    return m;
+  }, [result]);
+
   const startSubscription = useCallback(async (planId) => {
     if (!hasAuthToken()) {
       setPendingCheckoutPlan(planId);
@@ -1247,7 +1257,7 @@ export default function App() {
     },
     {
       title: "Audit",
-      body: "Cross-check each line against CMS locality benchmarks and facility history where available."
+      body: "Benchmark each line against CMS data, retrieve matching statute excerpts from the legal library, then run a grounded LLM legal review on that context."
     },
     {
       title: "Appeal",
@@ -1638,6 +1648,29 @@ export default function App() {
                 </p>
               </div>
 
+              {result.analysis.llmLegalAudit?.ok ? (
+                <div className="rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50/90 to-violet-50/80 p-3 text-sm text-ink-800">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-800">
+                    Legal review (library retrieval → grounded LLM)
+                  </p>
+                  <p className="mt-2 leading-relaxed text-ink-800">
+                    {result.analysis.llmLegalAudit.overallAssessment}
+                  </p>
+                  {result.analysis.llmLegalAudit.contextIds?.length > 0 && (
+                    <p className="mt-2 text-[10px] text-indigo-700/90">
+                      Context clause ids: {result.analysis.llmLegalAudit.contextIds.join(", ")}
+                    </p>
+                  )}
+                </div>
+              ) : result.analysis.llmLegalAudit?.skipped ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-3 text-xs text-ink-600">
+                  <span className="font-medium text-brand-950">Grounded LLM legal review: </span>
+                  unavailable ({result.analysis.llmLegalAudit?.reason || "skipped"}). Configure{" "}
+                  <code className="rounded bg-slate-200 px-1">GEMINI_API_KEY</code> on the server to
+                  enable narrative audit on retrieved statute excerpts only.
+                </div>
+              ) : null}
+
               {result.analysis.flags.length > 0 && (
                 <div>
                   <p className="text-xs font-medium text-ink-500">Flagged lines &amp; sources</p>
@@ -1691,6 +1724,18 @@ export default function App() {
                             {fmt(f.hospitalHistorical.medianBilled)}). Your charge of {fmt(f.billed)}{" "}
                             shows a <strong>significant premium</strong> versus that facility peer
                             band—use with your itemized detail and EOB.
+                          </p>
+                        )}
+                        {f.retrievedClauses?.length > 0 && (
+                          <p className="mt-2 text-[10px] leading-relaxed text-slate-600">
+                            <span className="font-medium text-slate-700">Retrieved library clauses: </span>
+                            {f.retrievedClauses.map((c) => c.id).join(", ")}
+                          </p>
+                        )}
+                        {llmAuditByCode.get(f.code) && (
+                          <p className="mt-2 rounded-lg border border-violet-100 bg-violet-50/80 px-2 py-1.5 text-xs leading-relaxed text-violet-950">
+                            <span className="font-medium text-violet-900">LLM (grounded): </span>
+                            {llmAuditByCode.get(f.code)}
                           </p>
                         )}
                       </li>
