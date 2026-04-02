@@ -1644,9 +1644,13 @@ export default function App() {
               {result.aiReview && (
                 <div
                   className={`rounded-xl border p-3 text-sm ${
-                    result.aiReview.approved
-                      ? "border-emerald-200 bg-emerald-50/90 text-emerald-950"
-                      : "border-amber-200 bg-amber-50/90 text-amber-950"
+                    result.aiReview.unavailable
+                      ? "border-slate-200 bg-slate-50 text-slate-800"
+                      : result.aiReview.approved === true
+                        ? "border-emerald-200 bg-emerald-50/90 text-emerald-950"
+                        : result.aiReview.approved === false
+                          ? "border-amber-200 bg-amber-50/90 text-amber-950"
+                          : "border-blue-100 bg-blue-50/80 text-brand-950"
                   }`}
                 >
                   <p className="text-xs font-semibold uppercase tracking-wide text-ink-600">
@@ -1664,7 +1668,11 @@ export default function App() {
                         : "—"}
                     </span>
                     <span className="rounded-full bg-white/80 px-2 py-0.5 font-medium">
-                      {result.aiReview.approved ? "Passes review" : "Needs attention"}
+                      {result.aiReview.unavailable
+                        ? "Review unavailable"
+                        : result.aiReview.approved
+                          ? "Passes review"
+                          : "Needs attention"}
                     </span>
                   </div>
                   {Array.isArray(result.aiReview.concerns) && result.aiReview.concerns.length > 0 && (

@@ -386,14 +386,68 @@ export function analyzeBill(parsed, options = {}) {
   };
 }
 
+function parseJsonObjectFromModelText(text) {
+  if (!text || typeof text !== "string") return null;
+  const cleaned = text.replace(/^\uFEFF/, "").replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        return JSON.parse(cleaned.slice(start, end + 1));
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+}
+
+function normalizeGeminiReview(obj) {
+  if (!obj || typeof obj !== "object") return null;
+  const alignment = String(obj.statuteAlignment || "").toLowerCase();
+  return {
+    unavailable: false,
+    approved: typeof obj.approved === "boolean" ? obj.approved : null,
+    confidence:
+      typeof obj.confidence === "number" && !Number.isNaN(obj.confidence)
+        ? Math.min(1, Math.max(0, obj.confidence))
+        : null,
+    statuteAlignment: ["high", "medium", "low"].includes(alignment) ? alignment : null,
+    summary: String(obj.summary || "").trim() || "No summary text returned.",
+    concerns: Array.isArray(obj.concerns) ? obj.concerns.map((c) => String(c)) : []
+  };
+}
+
+function reviewUnavailable(summary, concerns = []) {
+  return {
+    unavailable: true,
+    approved: null,
+    confidence: null,
+    statuteAlignment: null,
+    summary,
+    concerns
+  };
+}
+
 /**
- * Second-pass Gemini “approval” over RAG context + deterministic audit (optional).
+ * Second-pass Gemini “approval” over RAG context + deterministic audit.
+ * Always returns a displayable object (never null) so the UI can show status.
  */
 export async function geminiReviewAudit(env, { parsed, analysis, ragContext }) {
   const apiKey = env?.GEMINI_API_KEY;
-  if (!apiKey || !String(ragContext || "").trim()) return null;
+  if (!apiKey) {
+    return reviewUnavailable(
+      "Gemini summary is not available: GEMINI_API_KEY is not set on this Worker. Add it under Workers → Settings → Variables and Secrets (encrypted), then redeploy if needed.",
+      ["Locally, you can use a .dev.vars file for wrangler dev (never commit secrets)."]
+    );
+  }
 
   const model = env?.GEMINI_MODEL || "gemini-2.5-flash";
+  const excerptBlock = String(ragContext || "").trim() || "(No legal excerpts were retrieved for this bill.)";
+
   const auditPayload = {
     facilityName: parsed?.facilityName,
     statementDate: parsed?.statementDate,
@@ -413,36 +467,71 @@ export async function geminiReviewAudit(env, { parsed, analysis, ragContext }) {
   const prompt = `You are a healthcare billing compliance reviewer (not a lawyer). Ground your review ONLY in the LEGAL EXCERPTS below and the numeric audit JSON—do not invent statutes.
 
 LEGAL EXCERPTS (retrieved corpus):
-${ragContext}
+${excerptBlock}
 
 AUDIT (JSON):
 ${JSON.stringify(auditPayload)}
 
-Reply with ONE JSON object only (no markdown fences):
+Return a single JSON object with exactly these keys:
 {"approved":boolean,"confidence":number,"statuteAlignment":"high"|"medium"|"low","summary":string,"concerns":string[]}
 
-approved=true if flag severities and citations are plausibly supported by the excerpts; confidence is 0-1.`;
+approved=true if flag severities and citations are plausibly supported by the excerpts; confidence must be between 0 and 1; summary is 2-4 sentences in English.`;
 
-  try {
+  const callGemini = async (generationConfig) => {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          generationConfig: { temperature: 0.2, topP: 0.9, topK: 20 },
+          generationConfig,
           contents: [{ parts: [{ text: prompt }] }]
         })
       }
     );
-    if (!res.ok) return null;
-    const data = await res.json();
+    const data = res.ok ? await res.json() : null;
+    return { res, data };
+  };
+
+  try {
+    let { res, data } = await callGemini({
+      temperature: 0.2,
+      topP: 0.9,
+      topK: 20,
+      responseMimeType: "application/json"
+    });
+
+    if (!res.ok) {
+      ({ res, data } = await callGemini({
+        temperature: 0.2,
+        topP: 0.9,
+        topK: 20
+      }));
+    }
+
+    if (!res.ok) {
+      return reviewUnavailable("Gemini API request failed.", [
+        `HTTP ${res.status}. Check the model name (GEMINI_MODEL) and API key in the Google AI / Cloud console.`
+      ]);
+    }
+
+    const block = data?.promptFeedback?.blockReason;
+    if (block) {
+      return reviewUnavailable("Gemini blocked this review request (safety / policy).", [String(block)]);
+    }
+
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return null;
-    const cleaned = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
-    return JSON.parse(cleaned);
-  } catch {
-    return null;
+    const parsedJson = parseJsonObjectFromModelText(text);
+    const normalized = normalizeGeminiReview(parsedJson);
+    if (normalized) return normalized;
+
+    return reviewUnavailable("Gemini returned a response we could not parse as JSON.", [
+      "Try again in a moment, or confirm the model supports JSON output."
+    ]);
+  } catch (e) {
+    return reviewUnavailable("Gemini review failed with an unexpected error.", [
+      String(e?.message || e || "unknown")
+    ]);
   }
 }
 
