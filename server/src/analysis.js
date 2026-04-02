@@ -417,6 +417,15 @@ function stripJsonFences(text) {
     .trim();
 }
 
+/** Remove internal clause-id markers like [erisa-claims] or empty [] from LLM copy for display. */
+function stripCitationIdBrackets(text) {
+  return String(text || "")
+    .replace(/\[[^\]]*\]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([.,;:])/g, "$1")
+    .trim();
+}
+
 /**
  * Second pass: LLM legal narrative grounded ONLY in retrieved library excerpts (RAG-style).
  * Numeric audit remains deterministic in analyzeBill.
@@ -443,14 +452,16 @@ export async function llmLegalAudit(env, parsed, analysis) {
   }
 
   const blocks = [...byId.values()].map(
-    (c) => `[${c.id}] ${c.topic} (${c.reference})\n${c.excerpt}`
+    (c) =>
+      `Clause ID: ${c.id}\nTopic: ${c.topic}\nReference: ${c.reference}\nExcerpt: ${c.excerpt}`
   );
 
   const prompt = `You are a U.S. healthcare billing compliance reviewer.
 
 STRICT RULES:
-- Ground every legal or regulatory statement ONLY in the CONTEXT excerpts below. Each excerpt starts with [id].
+- Ground every legal or regulatory statement ONLY in the CONTEXT excerpts below (each has a Clause ID for your reasoning only).
 - Do NOT invent citations, CFR sections, USC sections, or case law not reflected in CONTEXT.
+- Do NOT include clause IDs, square brackets, or internal codes in your written assessments—plain English for patients/readers only.
 - If an issue is not covered by CONTEXT, say the provided excerpts do not address that point.
 - Numeric amounts and CMS benchmarks in SYSTEM FACTS are authoritative—treat them as facts.
 
@@ -477,8 +488,8 @@ ${JSON.stringify(
 
 Return ONLY valid JSON (no markdown):
 {
-  "overallAssessment": "string, 2-5 sentences; cite only [id] labels from CONTEXT",
-  "perFlag": [ { "code": "string", "assessment": "string, 1-3 sentences; cite only [id]" } ]
+  "overallAssessment": "string, 2-5 sentences in plain English; no bracketed ids",
+  "perFlag": [ { "code": "string", "assessment": "string, 1-3 sentences in plain English; no bracketed ids" } ]
 }
 
 If there are zero flagged lines, set perFlag to [] and focus overallAssessment on general rights and disclosures described in CONTEXT only.`;
@@ -512,8 +523,9 @@ If there are zero flagged lines, set perFlag to [] and focus overallAssessment o
 
     const cleaned = stripJsonFences(text);
     const parsedOut = JSON.parse(cleaned);
-    const overallAssessment =
-      typeof parsedOut?.overallAssessment === "string" ? parsedOut.overallAssessment : "";
+    const overallAssessment = stripCitationIdBrackets(
+      typeof parsedOut?.overallAssessment === "string" ? parsedOut.overallAssessment : ""
+    );
     const perFlag = Array.isArray(parsedOut?.perFlag) ? parsedOut.perFlag : [];
 
     return {
@@ -523,9 +535,8 @@ If there are zero flagged lines, set perFlag to [] and focus overallAssessment o
         .filter((p) => p && typeof p.code === "string")
         .map((p) => ({
           code: p.code,
-          assessment: String(p.assessment || "")
+          assessment: stripCitationIdBrackets(String(p.assessment || ""))
         })),
-      contextIds: [...byId.keys()],
       model
     };
   } catch (e) {

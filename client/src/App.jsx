@@ -5,6 +5,15 @@ const fmt = (n) =>
     ? n.toLocaleString("en-US", { style: "currency", currency: "USD" })
     : "—";
 
+/** Strip internal clause-id markers like [erisa-claims] from older API responses. */
+function stripCitationBrackets(text) {
+  return String(text || "")
+    .replace(/\[[^\]]*\]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([.,;:])/g, "$1")
+    .trim();
+}
+
 function getStripeCustomerHeaders() {
   if (typeof localStorage === "undefined") return {};
   const id = localStorage.getItem("stripe_customer_id");
@@ -1217,7 +1226,7 @@ export default function App() {
     const m = new Map();
     for (const p of result?.analysis?.llmLegalAudit?.perFlag ?? []) {
       if (p?.code && p?.assessment && !m.has(p.code)) {
-        m.set(p.code, p.assessment);
+        m.set(p.code, stripCitationBrackets(p.assessment));
       }
     }
     return m;
@@ -1654,13 +1663,8 @@ export default function App() {
                     Legal review (library retrieval → grounded LLM)
                   </p>
                   <p className="mt-2 leading-relaxed text-ink-800">
-                    {result.analysis.llmLegalAudit.overallAssessment}
+                    {stripCitationBrackets(result.analysis.llmLegalAudit.overallAssessment)}
                   </p>
-                  {result.analysis.llmLegalAudit.contextIds?.length > 0 && (
-                    <p className="mt-2 text-[10px] text-indigo-700/90">
-                      Context clause ids: {result.analysis.llmLegalAudit.contextIds.join(", ")}
-                    </p>
-                  )}
                 </div>
               ) : result.analysis.llmLegalAudit?.skipped ? (
                 <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-3 text-xs text-ink-600">
@@ -1724,12 +1728,6 @@ export default function App() {
                             {fmt(f.hospitalHistorical.medianBilled)}). Your charge of {fmt(f.billed)}{" "}
                             shows a <strong>significant premium</strong> versus that facility peer
                             band—use with your itemized detail and EOB.
-                          </p>
-                        )}
-                        {f.retrievedClauses?.length > 0 && (
-                          <p className="mt-2 text-[10px] leading-relaxed text-slate-600">
-                            <span className="font-medium text-slate-700">Retrieved library clauses: </span>
-                            {f.retrievedClauses.map((c) => c.id).join(", ")}
                           </p>
                         )}
                         {llmAuditByCode.get(f.code) && (
