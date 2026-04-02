@@ -206,7 +206,7 @@ function SeverityPill({ severity }) {
   );
 }
 
-/** Shield + StatuteBill wordmark (SVG, no external image). */
+/** Shield + Statute Bill wordmark (SVG, no external image). */
 function BrandLogo({ className = "" }) {
   return (
     <div className={`flex items-center gap-3 ${className}`}>
@@ -232,7 +232,7 @@ function BrandLogo({ className = "" }) {
       </svg>
       <div className="flex flex-col leading-tight">
         <span className="font-display text-lg font-bold tracking-tight text-brand-950 sm:text-xl">
-          StatuteBill
+          Statute Bill
         </span>
         <span className="hidden text-[10px] font-medium uppercase tracking-[0.12em] text-ink-500 sm:inline">
           The Settlement Shield
@@ -380,7 +380,7 @@ function ComplianceShields() {
         Legal compliance you can cite
       </h2>
       <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-ink-600">
-        StatuteBill is built to map billing disputes to authorities already in our audit engine—not
+        Statute Bill is built to map billing disputes to authorities already in our audit engine—not
         generic “please lower my bill” emails.
       </p>
       <div className="-mx-5 mt-8 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 scroll-pr-5 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:scroll-pl-0 sm:scroll-pr-0 sm:pb-0">
@@ -456,7 +456,7 @@ function LegalContrastModule() {
           className="w-full rounded-xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 text-left transition hover:border-blue-400"
         >
           <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-800">
-            StatuteBill formal request
+            Statute Bill formal request
           </p>
           <p className="mt-2 text-sm font-semibold leading-relaxed text-ink-800">{statuteHighlight}</p>
           <p className="mt-3 text-[11px] font-semibold text-blue-700">Tap to enlarge citations</p>
@@ -483,7 +483,7 @@ function LegalContrastModule() {
             </div>
             <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-800">
-                StatuteBill formal request (full)
+                Statute Bill formal request (full)
               </p>
               <p className="mt-2 text-xs leading-relaxed text-ink-700">
                 Cites 45 CFR Part 180, No Surprises Act, and ERISA appeals procedures with CPT/HCPCS
@@ -511,7 +511,7 @@ function LegalContrastModule() {
         </div>
         <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-800">
-            StatuteBill formal request
+            Statute Bill formal request
           </p>
           <p className="mt-2 text-xs leading-relaxed text-ink-700">
             Cites 45 CFR Part 180, No Surprises Act, and ERISA appeals procedures with CPT/HCPCS
@@ -1381,7 +1381,7 @@ export default function App() {
           </p>
           <h1 className="mx-auto mt-2 max-w-4xl font-display text-3xl font-bold tracking-tight text-brand-950 sm:mt-3 sm:text-6xl">
             <span className="sm:hidden">Stop Overpaying Medical Bills</span>
-            <span className="hidden sm:inline">StatuteBill</span>
+            <span className="hidden sm:inline">Statute Bill</span>
           </h1>
           <p className="mx-auto mt-3 max-w-3xl text-base font-medium leading-relaxed text-ink-800 sm:hidden">
             Scan your bill. We cite the law.
@@ -1660,7 +1660,7 @@ export default function App() {
               {result.analysis.llmLegalAudit?.ok ? (
                 <div className="rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50/90 to-violet-50/80 p-3 text-sm text-ink-800">
                   <p className="text-xs font-semibold uppercase tracking-wide text-indigo-800">
-                    Legal review (library retrieval → grounded LLM)
+                    Statute Bill AI — legal review
                   </p>
                   <p className="mt-2 leading-relaxed text-ink-800">
                     {stripCitationBrackets(result.analysis.llmLegalAudit.overallAssessment)}
@@ -1668,7 +1668,7 @@ export default function App() {
                 </div>
               ) : result.analysis.llmLegalAudit?.skipped ? (
                 <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-3 text-xs text-ink-600">
-                  <span className="font-medium text-brand-950">Grounded LLM legal review: </span>
+                  <span className="font-medium text-brand-950">Statute Bill AI legal review: </span>
                   unavailable ({result.analysis.llmLegalAudit?.reason || "skipped"}). Configure{" "}
                   <code className="rounded bg-slate-200 px-1">GEMINI_API_KEY</code> on the server to
                   enable narrative audit on retrieved statute excerpts only.
@@ -1732,7 +1732,7 @@ export default function App() {
                         )}
                         {llmAuditByCode.get(f.code) && (
                           <p className="mt-2 rounded-lg border border-violet-100 bg-violet-50/80 px-2 py-1.5 text-xs leading-relaxed text-violet-950">
-                            <span className="font-medium text-violet-900">LLM (grounded): </span>
+                            <span className="font-medium text-violet-900">Statute Bill AI: </span>
                             {llmAuditByCode.get(f.code)}
                           </p>
                         )}
@@ -1993,7 +1993,7 @@ export default function App() {
               Important notice
             </p>
             <p className="mt-3 text-sm leading-relaxed text-ink-700">
-              StatuteBill provides educational tools and illustrative drafts based on publicly
+              Statute Bill provides educational tools and illustrative drafts based on publicly
               available rules and benchmarks. It is{" "}
               <strong className="font-semibold text-brand-950">not</strong> legal, medical, or
               insurance advice. Outcomes depend on your plan, provider, and facts—consult a
