@@ -10,7 +10,7 @@ import { retrieveStatutesForBill } from "./retrieval.js";
 export class LegalLibraryRetriever extends BaseRetriever {
   constructor(fields = {}) {
     super(fields);
-    this.k = fields.k ?? 12;
+    this.k = fields.k ?? 20;
   }
 
   lc_namespace = ["statutebill", "retrievers"];
@@ -38,7 +38,7 @@ const billToQuery = RunnableLambda.from((parsed) => JSON.stringify(parsed ?? {})
 /**
  * RAG step: bill JSON → ranked legal Documents (runs before deterministic audit).
  */
-export async function runBillRag(parsed, k = 12) {
+export async function runBillRag(parsed, k = 20) {
   const retriever = new LegalLibraryRetriever({ k });
   const chain = RunnableSequence.from([billToQuery, retriever]);
   return chain.invoke(parsed);

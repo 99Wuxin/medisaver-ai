@@ -1,7 +1,7 @@
 import { LEGAL_LIBRARY } from "../data/legalLibrary.js";
 
-const DEFAULT_MAX = 8;
-const MIN_FALLBACK = 4;
+const DEFAULT_MAX = 16;
+const MIN_FALLBACK = 6;
 
 function scoreEntry(entry, code, descriptionLower, severity) {
   let score = 0;

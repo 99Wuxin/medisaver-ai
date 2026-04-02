@@ -103,6 +103,34 @@ function coerceGeminiOutput(parsed, demoScenario) {
   };
 }
 
+const cmsCodeIndex = new Map(cmsReference.map((r) => [String(r.code).replace(/\s/g, ""), r]));
+
+/** Keep only line items whose codes exist in cmsReference; normalize description to catalog text. */
+function sanitizeLineItemsToCmsReference(parsed) {
+  if (!parsed?.lineItems?.length) return null;
+  const lineItems = parsed.lineItems
+    .map((li) => {
+      const c = String(li.code || "").replace(/\s/g, "");
+      const ref = cmsCodeIndex.get(c);
+      if (!ref) return null;
+      return {
+        code: ref.code,
+        description: ref.description,
+        quantity: Math.max(1, Number(li.quantity) || 1),
+        billed: Math.max(1, Math.round(Number(li.billed) || 0))
+      };
+    })
+    .filter(Boolean);
+  if (!lineItems.length) return null;
+  return { ...parsed, lineItems };
+}
+
+function cmsAllowedCodesPromptBlock() {
+  return cmsReference
+    .map((r) => `- ${r.code}: ${r.description} (illustrative benchmark ~$${r.typicalAllowed} allowed)`)
+    .join("\n");
+}
+
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -120,20 +148,27 @@ async function generateWithGemini(env, demoScenario) {
 
   const model = env?.GEMINI_MODEL || "gemini-2.5-flash";
   const variationToken = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  const prompt = `Generate ONE synthetic US medical bill JSON object for audit testing.
-Requirements:
-- Output ONLY valid JSON (no markdown).
-- Use schema:
+  const catalog = cmsAllowedCodesPromptBlock();
+  const prompt = `Generate ONE synthetic US hospital or outpatient bill as JSON for billing-compliance audit testing.
+
+STRICT: Every lineItems[].code MUST be exactly one of these codes (copy code strings exactly). Use the descriptions below as your line description text (verbatim or very close).
+${catalog}
+
+Output ONLY valid JSON (no markdown). Schema:
 {
-  "facilityName": "string",
-  "patientName": "string",
+  "facilityName": "string (realistic hospital or clinic name)",
+  "patientName": "string (fictional)",
   "statementDate": "YYYY-MM-DD",
-  "lineItems": [{ "code":"CPT/HCPCS", "description":"string", "quantity":number, "billed":number }]
+  "lineItems": [{ "code": "from list only", "description": "string", "quantity": number >= 1, "billed": number }]
 }
-- Scenario: ${demoScenario === "high" ? "high billed amount with 4-6 lines" : "small bill with 2-3 lines"}.
-- IMPORTANT: make this case materially different from previous generations: use different CPT/HCPCS combinations, different descriptions, different facility and patient alias.
-- Keep all values realistic but varied each run.
-- Use this variation token to force uniqueness: ${variationToken}`;
+
+Scenario: ${
+    demoScenario === "high"
+      ? "4-6 line items; billed amounts should be clearly INFLATED vs the benchmarks above (e.g. often 3-10×) so auditors would flag overcharges."
+      : "2-3 line items; billed amounts closer to typical commercial charges, some lines modestly above benchmark."
+  }
+Vary which codes appear, quantities, facility, patient, and statement date. Make each run clearly different.
+Uniqueness token (ignore in output): ${variationToken}`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
@@ -142,7 +177,7 @@ Requirements:
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         generationConfig: {
-          temperature: 1.1,
+          temperature: 1.05,
           topP: 0.95,
           topK: 40
         },
@@ -159,7 +194,8 @@ Requirements:
   // Gemini may occasionally wrap JSON in markdown fences.
   const cleaned = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
   const parsed = JSON.parse(cleaned);
-  return coerceGeminiOutput(parsed, demoScenario);
+  const coerced = coerceGeminiOutput(parsed, demoScenario);
+  return sanitizeLineItemsToCmsReference(coerced) || null;
 }
 
 async function extractFromDocumentWithGemini(buffer, mimeType, env, demoScenario) {
@@ -224,12 +260,16 @@ Rules:
 }
 
 /**
- * Mock "OCR" — real extraction when a file is uploaded; otherwise deterministic demo data.
+ * No file: Gemini generates a synthetic bill (codes constrained to cmsReference); upload: vision extract, else generate.
  */
 export async function mockExtractLineItems(buffer, demoScenario, env, mimeType) {
-  // "Run audit (no file)" must always return line items with CPT/HCPCS codes that exist in
-  // cmsReference so benchmarks and flags are meaningful. Skip Gemini random bills for this path.
   if (!buffer || buffer.byteLength === 0) {
+    try {
+      const generated = await generateWithGemini(env, demoScenario);
+      if (generated) return generated;
+    } catch {
+      // fall through
+    }
     return fallbackDemoScenario(demoScenario);
   }
 
