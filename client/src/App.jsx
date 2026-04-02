@@ -14,6 +14,51 @@ function stripCitationBrackets(text) {
     .trim();
 }
 
+function LlmLegalAuditSkippedDetails({ audit }) {
+  const code = audit?.skipCode;
+  const reason = audit?.reason || "skipped";
+  const looks429 =
+    code === "GEMINI_RATE_LIMIT" || (typeof reason === "string" && reason.includes("429"));
+  const looksNoKey =
+    code === "NO_API_KEY" ||
+    (typeof reason === "string" && /not configured/i.test(reason));
+
+  if (looks429) {
+    return (
+      <>
+        Temporarily unavailable: Google Gemini returned <strong>HTTP 429 (rate limit)</strong>. Your API
+        key is usually fine—wait a minute and run the audit again, or check usage and quotas in{" "}
+        <a
+          href="https://aistudio.google.com"
+          className="font-medium text-blue-700 underline decoration-blue-400/70 underline-offset-2"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Google AI Studio
+        </a>
+        .
+      </>
+    );
+  }
+
+  if (looksNoKey) {
+    return (
+      <>
+        unavailable ({reason}). Configure{" "}
+        <code className="rounded bg-slate-200 px-1">GEMINI_API_KEY</code> on the server to enable
+        narrative audit on retrieved statute excerpts only.
+      </>
+    );
+  }
+
+  return (
+    <>
+      unavailable ({reason}). If this persists, verify <code className="rounded bg-slate-200 px-1">GEMINI_API_KEY</code>{" "}
+      and Gemini quota, then try again.
+    </>
+  );
+}
+
 function getStripeCustomerHeaders() {
   if (typeof localStorage === "undefined") return {};
   const id = localStorage.getItem("stripe_customer_id");
@@ -1654,11 +1699,9 @@ export default function App() {
                   </p>
                 </div>
               ) : result.analysis.llmLegalAudit?.skipped ? (
-                <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-3 text-xs text-ink-600">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-3 text-xs leading-relaxed text-ink-600">
                   <span className="font-medium text-brand-950">Statute Bill AI legal review: </span>
-                  unavailable ({result.analysis.llmLegalAudit?.reason || "skipped"}). Configure{" "}
-                  <code className="rounded bg-slate-200 px-1">GEMINI_API_KEY</code> on the server to
-                  enable narrative audit on retrieved statute excerpts only.
+                  <LlmLegalAuditSkippedDetails audit={result.analysis.llmLegalAudit} />
                 </div>
               ) : null}
 

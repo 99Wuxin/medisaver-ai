@@ -228,15 +228,19 @@ Rules:
 }
 
 /**
- * Mock "OCR" — demo returns a plausible bill if image present; otherwise uses body lines.
+ * Mock "OCR" — real extraction when a file is uploaded; otherwise deterministic demo data.
  */
 export async function mockExtractLineItems(buffer, demoScenario, env, mimeType) {
+  // "Run audit (no file)" must always return line items with CPT/HCPCS codes that exist in
+  // cmsReference so benchmarks and flags are meaningful. Skip Gemini random bills for this path.
+  if (!buffer || buffer.byteLength === 0) {
+    return fallbackDemoScenario(demoScenario);
+  }
+
   try {
-    // If a file is uploaded, prioritize real extraction from document content.
     const extracted = await extractFromDocumentWithGemini(buffer, mimeType, env, demoScenario);
     if (extracted) return extracted;
 
-    // If no file or extraction failed, generate synthetic scenario.
     const generated = await generateWithGemini(env, demoScenario);
     if (generated) return generated;
   } catch {
@@ -433,7 +437,12 @@ function stripCitationIdBrackets(text) {
 export async function llmLegalAudit(env, parsed, analysis) {
   const apiKey = env?.GEMINI_API_KEY;
   if (!apiKey) {
-    return { ok: false, skipped: true, reason: "GEMINI_API_KEY not configured" };
+    return {
+      ok: false,
+      skipped: true,
+      skipCode: "NO_API_KEY",
+      reason: "GEMINI_API_KEY not configured"
+    };
   }
 
   const model = env?.GEMINI_MODEL || "gemini-2.5-flash";
@@ -512,13 +521,32 @@ If there are zero flagged lines, set perFlag to [] and focus overallAssessment o
     );
 
     if (!res.ok) {
-      return { ok: false, skipped: true, reason: `Gemini HTTP ${res.status}` };
+      const status = res.status;
+      if (status === 429) {
+        return {
+          ok: false,
+          skipped: true,
+          skipCode: "GEMINI_RATE_LIMIT",
+          reason: "Gemini API rate limit (HTTP 429)—try again in a minute"
+        };
+      }
+      return {
+        ok: false,
+        skipped: true,
+        skipCode: "GEMINI_HTTP_ERROR",
+        reason: `Gemini HTTP ${status}`
+      };
     }
 
     const data = await res.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
-      return { ok: false, skipped: true, reason: "empty_model_response" };
+      return {
+        ok: false,
+        skipped: true,
+        skipCode: "EMPTY_RESPONSE",
+        reason: "empty_model_response"
+      };
     }
 
     const cleaned = stripJsonFences(text);
@@ -540,6 +568,11 @@ If there are zero flagged lines, set perFlag to [] and focus overallAssessment o
       model
     };
   } catch (e) {
-    return { ok: false, skipped: true, reason: e?.message || "llm_audit_failed" };
+    return {
+      ok: false,
+      skipped: true,
+      skipCode: "LLM_AUDIT_ERROR",
+      reason: e?.message || "llm_audit_failed"
+    };
   }
 }
