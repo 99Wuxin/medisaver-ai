@@ -241,12 +241,12 @@ app.get("/", async (c) => {
   return c.text("Frontend assets not configured. Build client and set [assets] in wrangler.toml.", 500);
 });
 
-// 健康检查
+// Health check
 app.get("/api/health", (c) => {
   return c.json({ ok: true, service: "medisaver-ai-api" });
 });
 
-/** 处理图片上传分析 */
+/** POST multipart: extract line items from bill file and analyze */
 app.post("/api/analyze", async (c) => {
   try {
     const user = await getUserSubscription(c);
@@ -255,7 +255,7 @@ app.post("/api/analyze", async (c) => {
     }
 
     const body = await c.req.parseBody();
-    const billFile = body["bill"]; // 这是一个 Blob 对象
+    const billFile = body["bill"]; // File/Blob when uploaded
     const demoScenario = body["demoScenario"] || "high";
 
     let buffer = null;
@@ -263,7 +263,7 @@ app.post("/api/analyze", async (c) => {
       buffer = await billFile.arrayBuffer();
     }
 
-    // 调用你分析逻辑中的 mock 函数
+    // mockExtractLineItems uses Gemini when configured, else demo data
     const parsed = await mockExtractLineItems(buffer, demoScenario, c.env, billFile?.type);
     const analysis = analyzeBill(parsed);
     analysis.llmLegalAudit = await llmLegalAudit(c.env, parsed, analysis);
@@ -275,7 +275,7 @@ app.post("/api/analyze", async (c) => {
   }
 });
 
-/** 处理 JSON 提交的分析 */
+/** POST JSON body with lineItems for analysis */
 app.post("/api/analyze-json", async (c) => {
   try {
     const user = await getUserSubscription(c);
@@ -301,7 +301,7 @@ app.post("/api/analyze-json", async (c) => {
   }
 });
 
-/** 生成申诉信 */
+/** Generate appeal letter from analysis */
 app.post("/api/appeal", async (c) => {
   try {
     const user = await getUserSubscription(c);

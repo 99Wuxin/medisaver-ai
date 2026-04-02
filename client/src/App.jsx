@@ -1017,22 +1017,10 @@ export default function App() {
   }
 
   const ANALYSIS_STEPS = [
-    {
-      en: "Extracting CPT / HCPCS codes from your bill…",
-      zh: "正在提取 CPT / HCPCS 代码…"
-    },
-    {
-      en: "Querying federal CMS benchmark database…",
-      zh: "正在检索联邦 CMS 数据库…"
-    },
-    {
-      en: "Cross-checking transparency & surprise-billing rules…",
-      zh: "正在核对价格透明与意外账单规则…"
-    },
-    {
-      en: "Retrieving statute excerpts from the legal library & running grounded LLM review…",
-      zh: "正在从法律库检索条款并进行基于上下文的 LLM 审计…"
-    }
+    "Extracting CPT / HCPCS codes from your bill…",
+    "Querying federal CMS benchmark database…",
+    "Cross-checking transparency & surprise-billing rules…",
+    "Retrieving statute excerpts from the legal library & Statute Bill AI — legal review…"
   ];
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -1592,12 +1580,11 @@ export default function App() {
               <ul className="mt-3 space-y-2 text-xs">
                 {ANALYSIS_STEPS.map((step, idx) => (
                   <li
-                    key={step.en}
+                    key={step}
                     className={idx <= loadingStep ? "font-medium text-blue-900" : "text-ink-500"}
                   >
                     {idx <= loadingStep ? "• " : "○ "}
-                    <span className="sm:hidden">{step.zh}</span>
-                    <span className="hidden sm:inline">{step.en}</span>
+                    {step}
                   </li>
                 ))}
               </ul>
@@ -1955,13 +1942,11 @@ export default function App() {
             onClick={(e) => e.stopPropagation()}
           >
             <p id="camera-guide-title" className="text-base font-bold text-brand-950">
-              拍照提示
+              Photo tips
             </p>
             <p className="mt-3 text-sm leading-relaxed text-ink-700">
-              请确保光线充足，能清晰看到 CPT Code 和金额。
-            </p>
-            <p className="mt-2 text-xs leading-relaxed text-ink-500">
-              Use bright, even light—CPT codes and dollar amounts should be readable, with minimal glare.
+              Use bright, even light so CPT codes and dollar amounts are clearly readable, with minimal
+              glare.
             </p>
             <div className="mt-5 flex gap-2">
               <button
