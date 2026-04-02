@@ -63,14 +63,6 @@ export function retrieveStatutesForFlag(flag, max = DEFAULT_MAX) {
   return out.slice(0, max);
 }
 
-/**
- * When there are no flags, still provide default federal framework excerpts for any narrative.
- */
-export function retrieveDefaultStatutes(max = 5) {
-  const defs = LEGAL_LIBRARY.filter((e) => e.tags?.includes("default"));
-  return defs.slice(0, max);
-}
-
 export function clausesToStatutoryCitations(clauses) {
   return clauses.map((c) => ({
     topic: c.topic,

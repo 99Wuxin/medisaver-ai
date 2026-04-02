@@ -5,60 +5,6 @@ const fmt = (n) =>
     ? n.toLocaleString("en-US", { style: "currency", currency: "USD" })
     : "—";
 
-/** Strip internal clause-id markers like [erisa-claims] from older API responses. */
-function stripCitationBrackets(text) {
-  return String(text || "")
-    .replace(/\[[^\]]*\]/g, "")
-    .replace(/\s{2,}/g, " ")
-    .replace(/\s+([.,;:])/g, "$1")
-    .trim();
-}
-
-function LlmLegalAuditSkippedDetails({ audit }) {
-  const code = audit?.skipCode;
-  const reason = audit?.reason || "skipped";
-  const looks429 =
-    code === "GEMINI_RATE_LIMIT" || (typeof reason === "string" && reason.includes("429"));
-  const looksNoKey =
-    code === "NO_API_KEY" ||
-    (typeof reason === "string" && /not configured/i.test(reason));
-
-  if (looks429) {
-    return (
-      <>
-        Temporarily unavailable: Google Gemini returned <strong>HTTP 429 (rate limit)</strong>. Your API
-        key is usually fine—wait a minute and run the audit again, or check usage and quotas in{" "}
-        <a
-          href="https://aistudio.google.com"
-          className="font-medium text-blue-700 underline decoration-blue-400/70 underline-offset-2"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Google AI Studio
-        </a>
-        .
-      </>
-    );
-  }
-
-  if (looksNoKey) {
-    return (
-      <>
-        unavailable ({reason}). Configure{" "}
-        <code className="rounded bg-slate-200 px-1">GEMINI_API_KEY</code> on the server to enable
-        narrative audit on retrieved statute excerpts only.
-      </>
-    );
-  }
-
-  return (
-    <>
-      unavailable ({reason}). If this persists, verify <code className="rounded bg-slate-200 px-1">GEMINI_API_KEY</code>{" "}
-      and Gemini quota, then try again.
-    </>
-  );
-}
-
 function getStripeCustomerHeaders() {
   if (typeof localStorage === "undefined") return {};
   const id = localStorage.getItem("stripe_customer_id");
@@ -1065,7 +1011,7 @@ export default function App() {
     "Extracting CPT / HCPCS codes from your bill…",
     "Querying federal CMS benchmark database…",
     "Cross-checking transparency & surprise-billing rules…",
-    "Retrieving statute excerpts from the legal library & Statute Bill AI — legal review…"
+    "Retrieving statute excerpts from the legal library & attaching them to findings…"
   ];
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -1255,16 +1201,6 @@ export default function App() {
     return out;
   }, [result]);
 
-  const llmAuditByCode = useMemo(() => {
-    const m = new Map();
-    for (const p of result?.analysis?.llmLegalAudit?.perFlag ?? []) {
-      if (p?.code && p?.assessment && !m.has(p.code)) {
-        m.set(p.code, stripCitationBrackets(p.assessment));
-      }
-    }
-    return m;
-  }, [result]);
-
   const startSubscription = useCallback(async (planId) => {
     if (!hasAuthToken()) {
       setPendingCheckoutPlan(planId);
@@ -1299,7 +1235,7 @@ export default function App() {
     },
     {
       title: "Audit",
-      body: "Benchmark each line against CMS data, retrieve matching statute excerpts from the legal library, then run a grounded LLM legal review on that context."
+      body: "Benchmark each line against CMS data and retrieve matching statute excerpts from the legal library for each flagged line."
     },
     {
       title: "Appeal",
@@ -1689,22 +1625,6 @@ export default function App() {
                 </p>
               </div>
 
-              {result.analysis.llmLegalAudit?.ok ? (
-                <div className="rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50/90 to-violet-50/80 p-3 text-sm text-ink-800">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-800">
-                    Statute Bill AI — legal review
-                  </p>
-                  <p className="mt-2 leading-relaxed text-ink-800">
-                    {stripCitationBrackets(result.analysis.llmLegalAudit.overallAssessment)}
-                  </p>
-                </div>
-              ) : result.analysis.llmLegalAudit?.skipped ? (
-                <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-3 text-xs leading-relaxed text-ink-600">
-                  <span className="font-medium text-brand-950">Statute Bill AI legal review: </span>
-                  <LlmLegalAuditSkippedDetails audit={result.analysis.llmLegalAudit} />
-                </div>
-              ) : null}
-
               {result.analysis.flags.length > 0 && (
                 <div>
                   <p className="text-xs font-medium text-ink-500">Flagged lines &amp; sources</p>
@@ -1758,12 +1678,6 @@ export default function App() {
                             {fmt(f.hospitalHistorical.medianBilled)}). Your charge of {fmt(f.billed)}{" "}
                             shows a <strong>significant premium</strong> versus that facility peer
                             band—use with your itemized detail and EOB.
-                          </p>
-                        )}
-                        {llmAuditByCode.get(f.code) && (
-                          <p className="mt-2 rounded-lg border border-violet-100 bg-violet-50/80 px-2 py-1.5 text-xs leading-relaxed text-violet-950">
-                            <span className="font-medium text-violet-900">Statute Bill AI: </span>
-                            {llmAuditByCode.get(f.code)}
                           </p>
                         )}
                       </li>
