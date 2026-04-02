@@ -1625,6 +1625,58 @@ export default function App() {
                 </p>
               </div>
 
+              {result.rag && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-3 text-xs leading-relaxed text-ink-700">
+                  <p className="font-semibold text-brand-950">Legal library retrieval (RAG)</p>
+                  <p className="mt-1">
+                    Pulled <strong>{result.rag.documentCount}</strong> statutory excerpts from the curated
+                    corpus before running the line-item audit
+                    {result.rag.clauseIds?.length
+                      ? ` (ids: ${result.rag.clauseIds.slice(0, 6).join(", ")}${
+                          result.rag.clauseIds.length > 6 ? "…" : ""
+                        })`
+                      : ""}
+                    .
+                  </p>
+                </div>
+              )}
+
+              {result.aiReview && (
+                <div
+                  className={`rounded-xl border p-3 text-sm ${
+                    result.aiReview.approved
+                      ? "border-emerald-200 bg-emerald-50/90 text-emerald-950"
+                      : "border-amber-200 bg-amber-50/90 text-amber-950"
+                  }`}
+                >
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-600">
+                    AI compliance check (Gemini)
+                  </p>
+                  <p className="mt-2 text-ink-900">{result.aiReview.summary}</p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full bg-white/80 px-2 py-0.5 font-medium">
+                      Alignment: {result.aiReview.statuteAlignment ?? "—"}
+                    </span>
+                    <span className="rounded-full bg-white/80 px-2 py-0.5 font-medium">
+                      Confidence:{" "}
+                      {typeof result.aiReview.confidence === "number"
+                        ? `${Math.round(result.aiReview.confidence * 100)}%`
+                        : "—"}
+                    </span>
+                    <span className="rounded-full bg-white/80 px-2 py-0.5 font-medium">
+                      {result.aiReview.approved ? "Passes review" : "Needs attention"}
+                    </span>
+                  </div>
+                  {Array.isArray(result.aiReview.concerns) && result.aiReview.concerns.length > 0 && (
+                    <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-ink-800">
+                      {result.aiReview.concerns.map((c, i) => (
+                        <li key={i}>{c}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
               {result.analysis.flags.length > 0 && (
                 <div>
                   <p className="text-xs font-medium text-ink-500">Flagged lines &amp; sources</p>

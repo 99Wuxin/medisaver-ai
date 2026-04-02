@@ -9,7 +9,7 @@
     "dev": "concurrently \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w client",
     "start": "npm run start -w server",
-    "deploy:worker": "wrangler deploy --config server/wrangler.toml"
+    "deploy:worker": "npm run build && wrangler deploy"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

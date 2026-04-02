@@ -7,6 +7,7 @@
     "deploy": "wrangler deploy"
   },
   "dependencies": {
+    "@langchain/core": "^0.3.80",
     "hono": "^4.0.0"
   },
   "devDependencies": {

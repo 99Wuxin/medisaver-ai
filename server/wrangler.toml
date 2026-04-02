@@ -1,3 +1,4 @@
+# API-only config (e.g. wrangler dev -w server). Production site: run `npm run deploy:worker` from repo root (uses ../wrangler.toml + client/dist).
 name = "99" # Must match the Worker name in the Cloudflare dashboard
 main = "src/index.js"
 compatibility_date = "2026-03-23"

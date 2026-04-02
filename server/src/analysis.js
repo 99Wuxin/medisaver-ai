@@ -1,5 +1,5 @@
 import { cmsReference, hospitalHistorical, LOCALITY } from "../data/cmsReference.js";
-import { clausesToStatutoryCitations, retrieveStatutesForFlag } from "./retrieval.js";
+import { clausesToStatutoryCitations, selectClausesForLine } from "./retrieval.js";
 
 function findReference(code) {
   const c = String(code).replace(/\s/g, "");
@@ -245,7 +245,8 @@ export async function mockExtractLineItems(buffer, demoScenario, env, mimeType) 
   return fallbackDemoScenario(demoScenario);
 }
 
-export function analyzeBill(parsed) {
+export function analyzeBill(parsed, options = {}) {
+  const { ragClausePool } = options;
   const { facilityName, lineItems } = parsed;
   const flags = [];
   let totalBilled = 0;
@@ -274,13 +275,16 @@ export function analyzeBill(parsed) {
             : "low";
 
     if (ref && billed > reasonable * 1.2) {
-      const retrievedClauses = retrieveStatutesForFlag({
-        code: row.code,
-        description: row.description,
-        severity,
-        billed,
-        reasonableEstimate: Math.round(reasonable * 100) / 100
-      });
+      const retrievedClauses = selectClausesForLine(
+        {
+          code: row.code,
+          description: row.description,
+          severity,
+          billed,
+          reasonableEstimate: Math.round(reasonable * 100) / 100
+        },
+        ragClausePool
+      );
       const statutes = clausesToStatutoryCitations(retrievedClauses);
       const clauseRefs = retrievedClauses.map((c) => c.id).join(", ");
       flags.push({
@@ -309,7 +313,7 @@ export function analyzeBill(parsed) {
         })),
         statutoryCitations: statutes,
         legalBasis: [
-          `Retrieved statutory excerpts (library ids: ${clauseRefs})—LLM audit uses only these texts plus system benchmarks.`,
+          `RAG-prioritized statutory excerpts (library ids: ${clauseRefs})—Gemini review is grounded on these texts plus system benchmarks.`,
           `Federal transparency & patient-protection framework: cite posted standard charges and Good Faith Estimate / plan documents where applicable (45 CFR Part 180; NSA at 42 U.S.C. § 300gg-131 et seq.; ERISA claims procedures at 29 U.S.C. §§ 1132–1133).`,
           `Pricing reasonableness: compare to Medicare / CMS-aligned benchmarks for CPT/HCPCS ${row.code} (${LOCALITY}).`,
           ref.source,
@@ -340,6 +344,66 @@ export function analyzeBill(parsed) {
       billed: Number(r.billed) * (Number(r.quantity) || 1)
     }))
   };
+}
+
+/**
+ * Second-pass Gemini “approval” over RAG context + deterministic audit (optional).
+ */
+export async function geminiReviewAudit(env, { parsed, analysis, ragContext }) {
+  const apiKey = env?.GEMINI_API_KEY;
+  if (!apiKey || !String(ragContext || "").trim()) return null;
+
+  const model = env?.GEMINI_MODEL || "gemini-2.5-flash";
+  const auditPayload = {
+    facilityName: parsed?.facilityName,
+    statementDate: parsed?.statementDate,
+    lineItemCount: parsed?.lineItems?.length ?? 0,
+    summary: analysis?.summary,
+    flags: (analysis?.flags || []).map((f) => ({
+      code: f.code,
+      description: f.description,
+      severity: f.severity,
+      billed: f.billed,
+      reasonableEstimate: f.reasonableEstimate,
+      overchargeEstimate: f.overchargeEstimate,
+      citationRefs: (f.statutoryCitations || []).map((s) => s.reference)
+    }))
+  };
+
+  const prompt = `You are a healthcare billing compliance reviewer (not a lawyer). Ground your review ONLY in the LEGAL EXCERPTS below and the numeric audit JSON—do not invent statutes.
+
+LEGAL EXCERPTS (retrieved corpus):
+${ragContext}
+
+AUDIT (JSON):
+${JSON.stringify(auditPayload)}
+
+Reply with ONE JSON object only (no markdown fences):
+{"approved":boolean,"confidence":number,"statuteAlignment":"high"|"medium"|"low","summary":string,"concerns":string[]}
+
+approved=true if flag severities and citations are plausibly supported by the excerpts; confidence is 0-1.`;
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          generationConfig: { temperature: 0.2, topP: 0.9, topK: 20 },
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) return null;
+    const cleaned = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
 }
 
 export function buildAppealLetter(analysis, patientName, insurerName) {

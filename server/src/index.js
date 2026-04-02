@@ -1,6 +1,11 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { analyzeBill, buildAppealLetter, mockExtractLineItems } from "./analysis.js";
+import { analyzeBill, buildAppealLetter, geminiReviewAudit, mockExtractLineItems } from "./analysis.js";
+import {
+  clauseEntriesFromDocuments,
+  ragContextFromDocuments,
+  runBillRag
+} from "./ragChain.js";
 import { authRegister, authLogin, authMe } from "./auth.js";
 
 const app = new Hono();
@@ -260,9 +265,22 @@ app.post("/api/analyze", async (c) => {
 
     // mockExtractLineItems uses Gemini when configured, else demo data
     const parsed = await mockExtractLineItems(buffer, demoScenario, c.env, billFile?.type);
-    const analysis = analyzeBill(parsed);
 
-    return c.json({ parsed, analysis });
+    const ragDocuments = await runBillRag(parsed);
+    const ragClausePool = clauseEntriesFromDocuments(ragDocuments);
+    const analysis = analyzeBill(parsed, { ragClausePool });
+    const ragContext = ragContextFromDocuments(ragDocuments);
+    const aiReview = await geminiReviewAudit(c.env, { parsed, analysis, ragContext });
+
+    return c.json({
+      parsed,
+      analysis,
+      rag: {
+        documentCount: ragDocuments.length,
+        clauseIds: ragClausePool.map((x) => x.id)
+      },
+      aiReview
+    });
   } catch (e) {
     console.error(e);
     return c.json({ error: "Analysis failed" }, 500);
@@ -287,8 +305,20 @@ app.post("/api/analyze-json", async (c) => {
       statementDate: body.statementDate || "",
       lineItems: body.lineItems
     };
-    const analysis = analyzeBill(parsed);
-    return c.json({ parsed, analysis });
+    const ragDocuments = await runBillRag(parsed);
+    const ragClausePool = clauseEntriesFromDocuments(ragDocuments);
+    const analysis = analyzeBill(parsed, { ragClausePool });
+    const ragContext = ragContextFromDocuments(ragDocuments);
+    const aiReview = await geminiReviewAudit(c.env, { parsed, analysis, ragContext });
+    return c.json({
+      parsed,
+      analysis,
+      rag: {
+        documentCount: ragDocuments.length,
+        clauseIds: ragClausePool.map((x) => x.id)
+      },
+      aiReview
+    });
   } catch (e) {
     return c.json({ error: "Analysis failed" }, 500);
   }

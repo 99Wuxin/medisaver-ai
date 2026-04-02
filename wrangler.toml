@@ -1,11 +1,9 @@
-name = "99" # matches Worker name; workers.dev URL: 99.wuxinyou99.workers.dev
+name = "99"
 main = "server/src/index.js"
 compatibility_date = "2026-03-23"
 
-# Same hostnames as Cloudflare dashboard → Triggers / Custom domains:
-# - workers.dev: 99.wuxinyou99.workers.dev (Preview: *-99.wuxinyou99.workers.dev is automatic)
-# - Custom: statutebill.com
-# - Custom: use www.statutebill.com (if dashboard shows wwww.statutebill.com, fix the typo there)
+# Production: https://statutebill.com (and www) via [[routes]] below.
+# workers.dev mirror still available when workers_dev = true.
 workers_dev = true
 
 [[routes]]
