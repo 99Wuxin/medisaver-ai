@@ -5,7 +5,6 @@ import {
   isOpenRouterConfigured,
   openRouterChatCompletion
 } from "./openRouter.js";
-import { fetchWithRetry, isOpenRouterConfigured, openRouterChatCompletion } from "./openRouter.js";
 
 function findReference(code) {
   const c = String(code).replace(/\s/g, "");
@@ -154,25 +153,6 @@ function cmsAllowedCodesPromptBlock() {
   return cmsReference
     .map((r) => `- ${r.code}: ${r.description} (illustrative benchmark ~$${r.typicalAllowed} allowed)`)
     .join("\n");
-}
-
-function parseJsonObjectFromModelText(text) {
-  if (!text || typeof text !== "string") return null;
-  const cleaned = text.replace(/^\uFEFF/, "").replace(/```json\s*/gi, "").replace(/```/g, "").trim();
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      try {
-        return JSON.parse(cleaned.slice(start, end + 1));
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  }
 }
 
 function arrayBufferToBase64(buffer) {
