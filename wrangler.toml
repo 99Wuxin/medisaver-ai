@@ -40,3 +40,8 @@ STRIPE_PRICE_FAMILY = "price_1TEMLZHv9HY3JHst620su2sF"
 binding = "DB"
 database_name = "statutebill-users"
 database_id = "47000a96-019b-497a-a0db-f73fce97922f"
+
+# /aigame and /aigame/* → Worker named below (Dashboard: Workers > service bindings)
+[[services]]
+binding = "AIGAME"
+service = "aigame"

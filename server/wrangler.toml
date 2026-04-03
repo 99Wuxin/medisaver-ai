@@ -19,3 +19,7 @@ compatibility_date = "2026-03-23"
 binding = "DB"
 database_name = "statutebill-users"
 database_id = "47000a96-019b-497a-a0db-f73fce97922f"
+
+[[services]]
+binding = "AIGAME"
+service = "aigame"

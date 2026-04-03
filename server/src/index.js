@@ -17,6 +17,14 @@ import { authRegister, authLogin, authMe } from "./auth.js";
 
 const app = new Hono();
 
+app.use("*", async (c, next) => {
+  const url = new URL(c.req.url);
+  if (url.pathname === "/aigame" || url.pathname.startsWith("/aigame/")) {
+    return c.env.AIGAME.fetch(c.req.raw);
+  }
+  await next();
+});
+
 function toFormBody(payload) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(payload)) {
