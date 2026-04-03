@@ -279,7 +279,7 @@ function throwOpenRouterBillGenerationFailed() {
 }
 
 /**
- * No file: only OpenRouter minimax free bill (no random local fallback); upload: vision / generate / fallback.
+ * No file: only OpenRouter Qwen free bill (no random local fallback); upload: vision / generate / fallback.
  */
 export async function mockExtractLineItems(buffer, demoScenario, env, mimeType) {
   if (!buffer || buffer.byteLength === 0) {
@@ -436,7 +436,7 @@ function reviewUnavailable(summary, concerns = []) {
 }
 
 /**
- * OpenRouter (minimax/minimax-m2.5:free) compliance check over RAG + audit.
+ * OpenRouter (qwen/qwen3.6-plus:free) compliance check over RAG + audit.
  * Always returns a displayable object (never null) so the UI can show status.
  */
 export async function complianceReviewAudit(env, { parsed, analysis, ragContext }) {

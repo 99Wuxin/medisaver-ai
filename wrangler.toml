@@ -24,7 +24,7 @@ not_found_handling = "single-page-application"
 STRIPE_PRICE_BASIC = "price_1TEMLBHv9HY3JHstELZkVneu"
 STRIPE_PRICE_PROTECTOR = "price_1TEMLPHv9HY3JHstpCyVSBBy"
 STRIPE_PRICE_FAMILY = "price_1TEMLZHv9HY3JHst620su2sF"
-# LLM: OpenRouter only — model is fixed in code to minimax/minimax-m2.5:free
+# LLM: OpenRouter only — model is fixed in code to qwen/qwen3.6-plus:free
 
 # Secret values are NOT stored in wrangler.toml.
 # Configure in Cloudflare: `wrangler secret put OPENROUTER_API_KEY`

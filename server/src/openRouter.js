@@ -1,6 +1,6 @@
 const DEFAULT_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
 /** Fixed OpenRouter free-tier model for this app. */
-export const OPENROUTER_MODEL_ID = "minimax/minimax-m2.5:free";
+export const OPENROUTER_MODEL_ID = "qwen/qwen3.6-plus:free";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));

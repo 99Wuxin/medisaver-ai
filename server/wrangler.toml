@@ -4,7 +4,7 @@ main = "src/index.js"
 compatibility_date = "2026-03-23"
 
 [vars]
-# LLM: OpenRouter only — model fixed in code (minimax/minimax-m2.5:free)
+# LLM: OpenRouter only — model fixed in code (qwen/qwen3.6-plus:free)
 # Secrets: `wrangler secret put OPENROUTER_API_KEY`
 # Local dev: `.dev.vars` with OPENROUTER_API_KEY=... (never commit)
 # Optional: OPENROUTER_REASONING=true (may interact with JSON mode)
