@@ -24,15 +24,11 @@ not_found_handling = "single-page-application"
 STRIPE_PRICE_BASIC = "price_1TEMLBHv9HY3JHstELZkVneu"
 STRIPE_PRICE_PROTECTOR = "price_1TEMLPHv9HY3JHstpCyVSBBy"
 STRIPE_PRICE_FAMILY = "price_1TEMLZHv9HY3JHst620su2sF"
-GEMINI_MODEL = "gemini-2.5-flash"
-# OpenRouter (preferred when set): qwen/qwen3.6-plus:free or paid slug
-OPENROUTER_MODEL = "qwen/qwen3.6-plus:free"
+# LLM: OpenRouter only — model is fixed in code to minimax/minimax-m2.5:free
 
 # Secret values are NOT stored in wrangler.toml.
-# Configure in Cloudflare: `wrangler secret put OPENROUTER_API_KEY`  (recommended)
-# Optional fallback: `wrangler secret put GEMINI_API_KEY`
+# Configure in Cloudflare: `wrangler secret put OPENROUTER_API_KEY`
 # For local `wrangler dev`, add to `.dev.vars` (not committed).
-
 
 # If you want object storage later, uncomment and configure R2.
 # [[r2_buckets]]

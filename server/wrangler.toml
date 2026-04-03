@@ -4,11 +4,10 @@ main = "src/index.js"
 compatibility_date = "2026-03-23"
 
 [vars]
-GEMINI_MODEL = "gemini-2.5-flash"
-OPENROUTER_MODEL = "qwen/qwen3.6-plus:free"
-# Secrets: `wrangler secret put OPENROUTER_API_KEY` (recommended) and/or `GEMINI_API_KEY`
+# LLM: OpenRouter only — model fixed in code (minimax/minimax-m2.5:free)
+# Secrets: `wrangler secret put OPENROUTER_API_KEY`
 # Local dev: `.dev.vars` with OPENROUTER_API_KEY=... (never commit)
-# Optional: OPENROUTER_REASONING=true (Qwen reasoning; may interact with JSON mode)
+# Optional: OPENROUTER_REASONING=true (may interact with JSON mode)
 
 # Uncomment to add R2 for image/asset storage later
 # [[r2_buckets]]

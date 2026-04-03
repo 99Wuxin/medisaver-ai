@@ -1,6 +1,13 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { analyzeBill, buildAppealLetter, geminiReviewAudit, mockExtractLineItems } from "./analysis.js";
+import {
+  analyzeBill,
+  buildAppealLetter,
+  complianceReviewAudit,
+  ERR_OPENROUTER_BILL_GENERATION,
+  ERR_OPENROUTER_NOFILE_REQUIRED,
+  mockExtractLineItems
+} from "./analysis.js";
 import {
   clauseEntriesFromDocuments,
   ragContextFromDocuments,
@@ -263,14 +270,14 @@ app.post("/api/analyze", async (c) => {
       buffer = await billFile.arrayBuffer();
     }
 
-    // mockExtractLineItems uses Gemini when configured, else demo data
+    // mockExtractLineItems uses OpenRouter when configured, else demo data
     const parsed = await mockExtractLineItems(buffer, demoScenario, c.env, billFile?.type);
 
     const ragDocuments = await runBillRag(parsed);
     const ragClausePool = clauseEntriesFromDocuments(ragDocuments);
     const analysis = analyzeBill(parsed, { ragClausePool });
     const ragContext = ragContextFromDocuments(ragDocuments);
-    const aiReview = await geminiReviewAudit(c.env, { parsed, analysis, ragContext });
+    const aiReview = await complianceReviewAudit(c.env, { parsed, analysis, ragContext });
 
     return c.json({
       parsed,
@@ -283,6 +290,9 @@ app.post("/api/analyze", async (c) => {
     });
   } catch (e) {
     console.error(e);
+    if (e?.code === ERR_OPENROUTER_NOFILE_REQUIRED || e?.code === ERR_OPENROUTER_BILL_GENERATION) {
+      return c.json({ error: e.message, code: e.code }, 400);
+    }
     return c.json({ error: "Analysis failed" }, 500);
   }
 });
@@ -309,7 +319,7 @@ app.post("/api/analyze-json", async (c) => {
     const ragClausePool = clauseEntriesFromDocuments(ragDocuments);
     const analysis = analyzeBill(parsed, { ragClausePool });
     const ragContext = ragContextFromDocuments(ragDocuments);
-    const aiReview = await geminiReviewAudit(c.env, { parsed, analysis, ragContext });
+    const aiReview = await complianceReviewAudit(c.env, { parsed, analysis, ragContext });
     return c.json({
       parsed,
       analysis,

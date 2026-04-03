@@ -1,10 +1,10 @@
 import { cmsReference, hospitalHistorical, LOCALITY } from "../data/cmsReference.js";
 import { clausesToStatutoryCitations, selectClausesForLine } from "./retrieval.js";
-import {
-  fetchWithRetry,
-  isOpenRouterConfigured,
-  openRouterChatCompletion
-} from "./openRouter.js";
+import { isOpenRouterConfigured, openRouterChatCompletion, OPENROUTER_MODEL_ID } from "./openRouter.js";
+
+/** No-file audit must use OpenRouter; missing key or failed generation throws (see .code). */
+export const ERR_OPENROUTER_NOFILE_REQUIRED = "OPENROUTER_NOFILE_REQUIRED";
+export const ERR_OPENROUTER_BILL_GENERATION = "OPENROUTER_BILL_GENERATION_FAILED";
 
 function findReference(code) {
   const c = String(code).replace(/\s/g, "");
@@ -87,7 +87,7 @@ function fallbackDemoScenario(demoScenario) {
   };
 }
 
-function coerceGeminiOutput(parsed, demoScenario) {
+function coerceBillJsonOutput(parsed, demoScenario) {
   if (!parsed || typeof parsed !== "object") return null;
   const lineItems = Array.isArray(parsed.lineItems)
     ? parsed.lineItems
@@ -205,42 +205,7 @@ async function generateSyntheticBillWithOpenRouter(env, demoScenario) {
   if (!or.ok || !or.text) return null;
   const parsed = parseJsonObjectFromModelText(or.text);
   if (!parsed) return null;
-  const coerced = coerceGeminiOutput(parsed, demoScenario);
-  return sanitizeLineItemsToCmsReference(coerced) || null;
-}
-
-async function generateWithGemini(env, demoScenario) {
-  const apiKey = env?.GEMINI_API_KEY;
-  if (!apiKey) return null;
-
-  const model = env?.GEMINI_MODEL || "gemini-2.5-flash";
-  const prompt = buildSyntheticBillPrompt(demoScenario);
-
-  const res = await fetchWithRetry(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        generationConfig: {
-          temperature: 1.05,
-          topP: 0.95,
-          topK: 40
-        },
-        contents: [{ parts: [{ text: prompt }] }]
-      })
-    }
-  );
-
-  if (!res.ok) return null;
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) return null;
-
-  // Gemini may occasionally wrap JSON in markdown fences.
-  const cleaned = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
-  const parsed = JSON.parse(cleaned);
-  const coerced = coerceGeminiOutput(parsed, demoScenario);
+  const coerced = coerceBillJsonOutput(parsed, demoScenario);
   return sanitizeLineItemsToCmsReference(coerced) || null;
 }
 
@@ -285,94 +250,47 @@ Rules:
   if (!or.ok || !or.text) return null;
   const parsed = parseJsonObjectFromModelText(or.text);
   if (!parsed) return null;
-  return coerceGeminiOutput(parsed, demoScenario);
-}
-
-async function extractFromDocumentWithGemini(buffer, mimeType, env, demoScenario) {
-  if (!buffer) return null;
-  const apiKey = env?.GEMINI_API_KEY;
-  if (!apiKey) return null;
-
-  const model = env?.GEMINI_MODEL || "gemini-2.5-flash";
-  const effectiveMimeType = mimeType || "application/octet-stream";
-  const prompt = `You are extracting structured billing line-items from a medical bill document.
-Return ONLY valid JSON with this exact schema:
-{
-  "facilityName": "string",
-  "patientName": "string",
-  "statementDate": "YYYY-MM-DD",
-  "lineItems": [{ "code":"CPT/HCPCS", "description":"string", "quantity":number, "billed":number }]
-}
-Rules:
-- Extract what exists in the document (image or PDF); do not invent extra rows.
-- If a code is missing but a line item exists, set code to "UNKNOWN".
-- quantity must be >= 1.
-- billed must be numeric (remove currency symbols/commas).
-- Keep 2-8 lineItems when possible.
-- Output JSON only, no markdown fences.`;
-
-  const res = await fetchWithRetry(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        generationConfig: {
-          temperature: 0.2,
-          topP: 0.9,
-          topK: 20
-        },
-        contents: [
-          {
-            parts: [
-              { text: prompt },
-              {
-                inline_data: {
-                  mime_type: effectiveMimeType,
-                  data: arrayBufferToBase64(buffer)
-                }
-              }
-            ]
-          }
-        ]
-      })
-    }
-  );
-
-  if (!res.ok) return null;
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) return null;
-
-  const cleaned = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
-  const parsed = JSON.parse(cleaned);
-  return coerceGeminiOutput(parsed, demoScenario);
+  return coerceBillJsonOutput(parsed, demoScenario);
 }
 
 async function generateSyntheticBill(env, demoScenario) {
-  if (isOpenRouterConfigured(env)) {
-    try {
-      const g = await generateSyntheticBillWithOpenRouter(env, demoScenario);
-      if (g) return g;
-    } catch {
-      //
-    }
+  if (!isOpenRouterConfigured(env)) return null;
+  try {
+    return await generateSyntheticBillWithOpenRouter(env, demoScenario);
+  } catch {
+    return null;
   }
-  return generateWithGemini(env, demoScenario);
+}
+
+function throwOpenRouterNoFileRequired() {
+  const err = new Error(
+    `No-file audit requires OPENROUTER_API_KEY (model ${OPENROUTER_MODEL_ID}). For local dev add server/.dev.vars — never commit it.`
+  );
+  err.code = ERR_OPENROUTER_NOFILE_REQUIRED;
+  throw err;
+}
+
+function throwOpenRouterBillGenerationFailed() {
+  const err = new Error(
+    `OpenRouter could not generate a bill (${OPENROUTER_MODEL_ID}). Check key, quota, and OPENROUTER_REASONING=false if JSON fails.`
+  );
+  err.code = ERR_OPENROUTER_BILL_GENERATION;
+  throw err;
 }
 
 /**
- * No file: LLM generates a synthetic bill (codes constrained to cmsReference); upload: vision extract, else generate.
+ * No file: only OpenRouter minimax free bill (no random local fallback); upload: vision / generate / fallback.
  */
 export async function mockExtractLineItems(buffer, demoScenario, env, mimeType) {
   if (!buffer || buffer.byteLength === 0) {
-    try {
-      const generated = await generateSyntheticBill(env, demoScenario);
-      if (generated) return generated;
-    } catch {
-      // fall through
+    if (!isOpenRouterConfigured(env)) {
+      throwOpenRouterNoFileRequired();
     }
-    return fallbackDemoScenario(demoScenario);
+    const generated = await generateSyntheticBillWithOpenRouter(env, demoScenario);
+    if (!generated) {
+      throwOpenRouterBillGenerationFailed();
+    }
+    return generated;
   }
 
   try {
@@ -380,9 +298,6 @@ export async function mockExtractLineItems(buffer, demoScenario, env, mimeType) 
       const extracted = await extractFromDocumentWithOpenRouter(buffer, mimeType, env, demoScenario);
       if (extracted) return extracted;
     }
-
-    const extractedGemini = await extractFromDocumentWithGemini(buffer, mimeType, env, demoScenario);
-    if (extractedGemini) return extractedGemini;
 
     const generated = await generateSyntheticBill(env, demoScenario);
     if (generated) return generated;
@@ -493,7 +408,7 @@ export function analyzeBill(parsed, options = {}) {
   };
 }
 
-function normalizeGeminiReview(obj) {
+function normalizeComplianceReview(obj) {
   if (!obj || typeof obj !== "object") return null;
   const alignment = String(obj.statuteAlignment || "").toLowerCase();
   return {
@@ -521,16 +436,14 @@ function reviewUnavailable(summary, concerns = []) {
 }
 
 /**
- * Second-pass LLM compliance check (OpenRouter preferred, else Gemini).
+ * OpenRouter (minimax/minimax-m2.5:free) compliance check over RAG + audit.
  * Always returns a displayable object (never null) so the UI can show status.
  */
-export async function geminiReviewAudit(env, { parsed, analysis, ragContext }) {
-  const hasOr = isOpenRouterConfigured(env);
-  const hasGemini = Boolean(String(env?.GEMINI_API_KEY || "").trim());
-  if (!hasOr && !hasGemini) {
+export async function complianceReviewAudit(env, { parsed, analysis, ragContext }) {
+  if (!isOpenRouterConfigured(env)) {
     return reviewUnavailable(
-      "LLM compliance summary is not available: set OPENROUTER_API_KEY (recommended) or GEMINI_API_KEY on this Worker.",
-      ["Cloudflare: Workers → Settings → Variables and Secrets. Use wrangler secret put OPENROUTER_API_KEY for production."]
+      "LLM compliance summary is not available: set OPENROUTER_API_KEY on this Worker.",
+      ["Cloudflare: Workers → Settings → Variables and Secrets → wrangler secret put OPENROUTER_API_KEY"]
     );
   }
 
@@ -565,101 +478,35 @@ Return a single JSON object with exactly these keys:
 
 approved=true if flag severities and citations are plausibly supported by the excerpts; confidence must be between 0 and 1; summary is 2-4 sentences in English.`;
 
-  if (hasOr) {
-    const body = {
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.2,
-      response_format: { type: "json_object" }
-    };
-    if (env?.OPENROUTER_REASONING === "true") {
-      body.reasoning = { enabled: true };
-    }
+  const body = {
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0.2,
+    response_format: { type: "json_object" }
+  };
+  if (env?.OPENROUTER_REASONING === "true") {
+    body.reasoning = { enabled: true };
+  }
+
+  try {
     const or = await openRouterChatCompletion(env, body);
     if (or.ok && or.text) {
       const parsedJson = parseJsonObjectFromModelText(or.text);
-      const normalized = normalizeGeminiReview(parsedJson);
+      const normalized = normalizeComplianceReview(parsedJson);
       if (normalized) return normalized;
     }
-    if (!hasGemini) {
-      if (!or.ok) {
-        if (or.status === 429) {
-          return reviewUnavailable("OpenRouter rate limit (HTTP 429).", [
-            "Wait and retry; the worker already retried transient limits.",
-            "Check usage limits at openrouter.ai for your key."
-          ]);
-        }
-        return reviewUnavailable("OpenRouter request failed.", [
-          `HTTP ${or.status}. Check OPENROUTER_MODEL and OPENROUTER_API_KEY.`
+    if (!or.ok) {
+      if (or.status === 429) {
+        return reviewUnavailable("OpenRouter rate limit (HTTP 429).", [
+          "Wait and retry; the worker already retried transient limits.",
+          "Check usage limits at openrouter.ai for your key."
         ]);
       }
-      return reviewUnavailable("OpenRouter returned a response we could not parse as JSON.", [
-        "Confirm the model supports JSON mode or try OPENROUTER_REASONING=false."
+      return reviewUnavailable("OpenRouter request failed.", [
+        `HTTP ${or.status}. Check OPENROUTER_API_KEY and OpenRouter status.`
       ]);
     }
-  }
-
-  const apiKey = env?.GEMINI_API_KEY;
-  const model = env?.GEMINI_MODEL || "gemini-2.5-flash";
-
-  const callGemini = async (generationConfig) => {
-    const res = await fetchWithRetry(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          generationConfig,
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      }
-    );
-    const data = res.ok ? await res.json() : null;
-    return { res, data };
-  };
-
-  try {
-    let { res, data } = await callGemini({
-      temperature: 0.2,
-      topP: 0.9,
-      topK: 20,
-      responseMimeType: "application/json"
-    });
-
-    if (!res.ok) {
-      ({ res, data } = await callGemini({
-        temperature: 0.2,
-        topP: 0.9,
-        topK: 20
-      }));
-    }
-
-    if (!res.ok) {
-      if (res.status === 429) {
-        return reviewUnavailable(
-          "Gemini rate limit (HTTP 429): this key has hit Google’s requests-per-minute or daily quota.",
-          [
-            "Wait 1–2 minutes and run the audit again (the worker already retried several times).",
-            "Prefer OPENROUTER_API_KEY to offload compliance review from Gemini."
-          ]
-        );
-      }
-      return reviewUnavailable("Gemini API request failed.", [
-        `HTTP ${res.status}. Check GEMINI_MODEL and the API key in Google AI Studio / Cloud console.`
-      ]);
-    }
-
-    const block = data?.promptFeedback?.blockReason;
-    if (block) {
-      return reviewUnavailable("Gemini blocked this review request (safety / policy).", [String(block)]);
-    }
-
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    const parsedJson = parseJsonObjectFromModelText(text);
-    const normalized = normalizeGeminiReview(parsedJson);
-    if (normalized) return normalized;
-
-    return reviewUnavailable("Gemini returned a response we could not parse as JSON.", [
-      "Try again in a moment, or confirm the model supports JSON output."
+    return reviewUnavailable("OpenRouter returned a response we could not parse as JSON.", [
+      "Try OPENROUTER_REASONING=false if JSON mode conflicts with reasoning."
     ]);
   } catch (e) {
     return reviewUnavailable("LLM review failed with an unexpected error.", [

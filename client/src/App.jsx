@@ -20,14 +20,34 @@ function getApiHeaders() {
   return h;
 }
 
+/** OpenRouter (LLM calls) can exceed 30s; browser would otherwise sit at 92% forever. */
+const ANALYZE_FETCH_TIMEOUT_MS = 120_000;
+
 async function analyzeBill(formData) {
-  const res = await fetch("/api/analyze", {
-    method: "POST",
-    headers: getApiHeaders(),
-    body: formData
-  });
-  if (!res.ok) throw new Error("Analysis failed. Try again.");
-  return res.json();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), ANALYZE_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch("/api/analyze", {
+      method: "POST",
+      headers: getApiHeaders(),
+      body: formData,
+      signal: controller.signal
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Analysis failed. Try again.");
+    }
+    return data;
+  } catch (e) {
+    if (e?.name === "AbortError") {
+      throw new Error(
+        "Analysis timed out after 2 minutes. The server may be slow (LLM quota or cold start)—try again shortly."
+      );
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function fetchAppeal(analysis, patientName, insurerName) {
@@ -1569,6 +1589,10 @@ export default function App() {
                   </li>
                 ))}
               </ul>
+              <p className="mt-3 text-[11px] leading-snug text-blue-600/90">
+                The bar pauses at 92% until the server returns—LLM steps (bill + compliance check) can take
+                30s–2 min. If you wait longer, you will see a timeout message.
+              </p>
             </div>
           )}
 
