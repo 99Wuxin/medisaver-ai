@@ -1654,7 +1654,7 @@ export default function App() {
                   }`}
                 >
                   <p className="text-xs font-semibold uppercase tracking-wide text-ink-600">
-                    AI compliance check (Gemini)
+                    AI compliance check (LLM)
                   </p>
                   <p className="mt-2 text-ink-900">{result.aiReview.summary}</p>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs">

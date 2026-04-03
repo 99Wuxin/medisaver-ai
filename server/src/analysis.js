@@ -1,5 +1,11 @@
 import { cmsReference, hospitalHistorical, LOCALITY } from "../data/cmsReference.js";
 import { clausesToStatutoryCitations, selectClausesForLine } from "./retrieval.js";
+import {
+  fetchWithRetry,
+  isOpenRouterConfigured,
+  openRouterChatCompletion
+} from "./openRouter.js";
+import { fetchWithRetry, isOpenRouterConfigured, openRouterChatCompletion } from "./openRouter.js";
 
 function findReference(code) {
   const c = String(code).replace(/\s/g, "");
@@ -103,6 +109,25 @@ function coerceGeminiOutput(parsed, demoScenario) {
   };
 }
 
+function parseJsonObjectFromModelText(text) {
+  if (!text || typeof text !== "string") return null;
+  const cleaned = text.replace(/^\uFEFF/, "").replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        return JSON.parse(cleaned.slice(start, end + 1));
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+}
+
 const cmsCodeIndex = new Map(cmsReference.map((r) => [String(r.code).replace(/\s/g, ""), r]));
 
 /** Keep only line items whose codes exist in cmsReference; normalize description to catalog text. */
@@ -131,6 +156,25 @@ function cmsAllowedCodesPromptBlock() {
     .join("\n");
 }
 
+function parseJsonObjectFromModelText(text) {
+  if (!text || typeof text !== "string") return null;
+  const cleaned = text.replace(/^\uFEFF/, "").replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        return JSON.parse(cleaned.slice(start, end + 1));
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+}
+
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -142,14 +186,10 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 
-async function generateWithGemini(env, demoScenario) {
-  const apiKey = env?.GEMINI_API_KEY;
-  if (!apiKey) return null;
-
-  const model = env?.GEMINI_MODEL || "gemini-2.5-flash";
+function buildSyntheticBillPrompt(demoScenario) {
   const variationToken = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const catalog = cmsAllowedCodesPromptBlock();
-  const prompt = `Generate ONE synthetic US hospital or outpatient bill as JSON for billing-compliance audit testing.
+  return `Generate ONE synthetic US hospital or outpatient bill as JSON for billing-compliance audit testing.
 
 STRICT: Every lineItems[].code MUST be exactly one of these codes (copy code strings exactly). Use the descriptions below as your line description text (verbatim or very close).
 ${catalog}
@@ -169,8 +209,34 @@ Scenario: ${
   }
 Vary which codes appear, quantities, facility, patient, and statement date. Make each run clearly different.
 Uniqueness token (ignore in output): ${variationToken}`;
+}
 
-  const res = await fetch(
+async function generateSyntheticBillWithOpenRouter(env, demoScenario) {
+  const prompt = buildSyntheticBillPrompt(demoScenario);
+  const body = {
+    messages: [{ role: "user", content: prompt }],
+    temperature: 1.05,
+    response_format: { type: "json_object" }
+  };
+  if (env?.OPENROUTER_REASONING === "true") {
+    body.reasoning = { enabled: true };
+  }
+  const or = await openRouterChatCompletion(env, body);
+  if (!or.ok || !or.text) return null;
+  const parsed = parseJsonObjectFromModelText(or.text);
+  if (!parsed) return null;
+  const coerced = coerceGeminiOutput(parsed, demoScenario);
+  return sanitizeLineItemsToCmsReference(coerced) || null;
+}
+
+async function generateWithGemini(env, demoScenario) {
+  const apiKey = env?.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  const model = env?.GEMINI_MODEL || "gemini-2.5-flash";
+  const prompt = buildSyntheticBillPrompt(demoScenario);
+
+  const res = await fetchWithRetry(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
       method: "POST",
@@ -198,6 +264,50 @@ Uniqueness token (ignore in output): ${variationToken}`;
   return sanitizeLineItemsToCmsReference(coerced) || null;
 }
 
+async function extractFromDocumentWithOpenRouter(buffer, mimeType, env, demoScenario) {
+  if (!buffer || !isOpenRouterConfigured(env)) return null;
+  const effectiveMimeType = mimeType || "application/octet-stream";
+  const b64 = arrayBufferToBase64(buffer);
+  const dataUrl = `data:${effectiveMimeType};base64,${b64}`;
+  const prompt = `You are extracting structured billing line-items from a medical bill document.
+Return ONLY valid JSON with this exact schema:
+{
+  "facilityName": "string",
+  "patientName": "string",
+  "statementDate": "YYYY-MM-DD",
+  "lineItems": [{ "code":"CPT/HCPCS", "description":"string", "quantity":number, "billed":number }]
+}
+Rules:
+- Extract what exists in the document (image or PDF); do not invent extra rows.
+- If a code is missing but a line item exists, set code to "UNKNOWN".
+- quantity must be >= 1.
+- billed must be numeric (remove currency symbols/commas).
+- Keep 2-8 lineItems when possible.
+- Output JSON only, no markdown fences.`;
+
+  const body = {
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: dataUrl } }
+        ]
+      }
+    ],
+    temperature: 0.2,
+    response_format: { type: "json_object" }
+  };
+  if (env?.OPENROUTER_REASONING === "true") {
+    body.reasoning = { enabled: true };
+  }
+  const or = await openRouterChatCompletion(env, body);
+  if (!or.ok || !or.text) return null;
+  const parsed = parseJsonObjectFromModelText(or.text);
+  if (!parsed) return null;
+  return coerceGeminiOutput(parsed, demoScenario);
+}
+
 async function extractFromDocumentWithGemini(buffer, mimeType, env, demoScenario) {
   if (!buffer) return null;
   const apiKey = env?.GEMINI_API_KEY;
@@ -221,7 +331,7 @@ Rules:
 - Keep 2-8 lineItems when possible.
 - Output JSON only, no markdown fences.`;
 
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
       method: "POST",
@@ -259,13 +369,25 @@ Rules:
   return coerceGeminiOutput(parsed, demoScenario);
 }
 
+async function generateSyntheticBill(env, demoScenario) {
+  if (isOpenRouterConfigured(env)) {
+    try {
+      const g = await generateSyntheticBillWithOpenRouter(env, demoScenario);
+      if (g) return g;
+    } catch {
+      //
+    }
+  }
+  return generateWithGemini(env, demoScenario);
+}
+
 /**
- * No file: Gemini generates a synthetic bill (codes constrained to cmsReference); upload: vision extract, else generate.
+ * No file: LLM generates a synthetic bill (codes constrained to cmsReference); upload: vision extract, else generate.
  */
 export async function mockExtractLineItems(buffer, demoScenario, env, mimeType) {
   if (!buffer || buffer.byteLength === 0) {
     try {
-      const generated = await generateWithGemini(env, demoScenario);
+      const generated = await generateSyntheticBill(env, demoScenario);
       if (generated) return generated;
     } catch {
       // fall through
@@ -274,13 +396,18 @@ export async function mockExtractLineItems(buffer, demoScenario, env, mimeType) 
   }
 
   try {
-    const extracted = await extractFromDocumentWithGemini(buffer, mimeType, env, demoScenario);
-    if (extracted) return extracted;
+    if (isOpenRouterConfigured(env)) {
+      const extracted = await extractFromDocumentWithOpenRouter(buffer, mimeType, env, demoScenario);
+      if (extracted) return extracted;
+    }
 
-    const generated = await generateWithGemini(env, demoScenario);
+    const extractedGemini = await extractFromDocumentWithGemini(buffer, mimeType, env, demoScenario);
+    if (extractedGemini) return extractedGemini;
+
+    const generated = await generateSyntheticBill(env, demoScenario);
     if (generated) return generated;
   } catch {
-    // Silent fallback keeps demo resilient if Gemini is unavailable.
+    //
   }
   return fallbackDemoScenario(demoScenario);
 }
@@ -353,7 +480,7 @@ export function analyzeBill(parsed, options = {}) {
         })),
         statutoryCitations: statutes,
         legalBasis: [
-          `RAG-prioritized statutory excerpts (library ids: ${clauseRefs})—Gemini review is grounded on these texts plus system benchmarks.`,
+          `RAG-prioritized statutory excerpts (library ids: ${clauseRefs})—LLM review is grounded on these texts plus system benchmarks.`,
           `Federal transparency & patient-protection framework: cite posted standard charges and Good Faith Estimate / plan documents where applicable (45 CFR Part 180; NSA at 42 U.S.C. § 300gg-131 et seq.; ERISA claims procedures at 29 U.S.C. §§ 1132–1133).`,
           `Pricing reasonableness: compare to Medicare / CMS-aligned benchmarks for CPT/HCPCS ${row.code} (${LOCALITY}).`,
           ref.source,
@@ -386,25 +513,6 @@ export function analyzeBill(parsed, options = {}) {
   };
 }
 
-function parseJsonObjectFromModelText(text) {
-  if (!text || typeof text !== "string") return null;
-  const cleaned = text.replace(/^\uFEFF/, "").replace(/```json\s*/gi, "").replace(/```/g, "").trim();
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      try {
-        return JSON.parse(cleaned.slice(start, end + 1));
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  }
-}
-
 function normalizeGeminiReview(obj) {
   if (!obj || typeof obj !== "object") return null;
   const alignment = String(obj.statuteAlignment || "").toLowerCase();
@@ -433,19 +541,19 @@ function reviewUnavailable(summary, concerns = []) {
 }
 
 /**
- * Second-pass Gemini “approval” over RAG context + deterministic audit.
+ * Second-pass LLM compliance check (OpenRouter preferred, else Gemini).
  * Always returns a displayable object (never null) so the UI can show status.
  */
 export async function geminiReviewAudit(env, { parsed, analysis, ragContext }) {
-  const apiKey = env?.GEMINI_API_KEY;
-  if (!apiKey) {
+  const hasOr = isOpenRouterConfigured(env);
+  const hasGemini = Boolean(String(env?.GEMINI_API_KEY || "").trim());
+  if (!hasOr && !hasGemini) {
     return reviewUnavailable(
-      "Gemini summary is not available: GEMINI_API_KEY is not set on this Worker. Add it under Workers → Settings → Variables and Secrets (encrypted), then redeploy if needed.",
-      ["Locally, you can use a .dev.vars file for wrangler dev (never commit secrets)."]
+      "LLM compliance summary is not available: set OPENROUTER_API_KEY (recommended) or GEMINI_API_KEY on this Worker.",
+      ["Cloudflare: Workers → Settings → Variables and Secrets. Use wrangler secret put OPENROUTER_API_KEY for production."]
     );
   }
 
-  const model = env?.GEMINI_MODEL || "gemini-2.5-flash";
   const excerptBlock = String(ragContext || "").trim() || "(No legal excerpts were retrieved for this bill.)";
 
   const auditPayload = {
@@ -477,8 +585,44 @@ Return a single JSON object with exactly these keys:
 
 approved=true if flag severities and citations are plausibly supported by the excerpts; confidence must be between 0 and 1; summary is 2-4 sentences in English.`;
 
+  if (hasOr) {
+    const body = {
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+      response_format: { type: "json_object" }
+    };
+    if (env?.OPENROUTER_REASONING === "true") {
+      body.reasoning = { enabled: true };
+    }
+    const or = await openRouterChatCompletion(env, body);
+    if (or.ok && or.text) {
+      const parsedJson = parseJsonObjectFromModelText(or.text);
+      const normalized = normalizeGeminiReview(parsedJson);
+      if (normalized) return normalized;
+    }
+    if (!hasGemini) {
+      if (!or.ok) {
+        if (or.status === 429) {
+          return reviewUnavailable("OpenRouter rate limit (HTTP 429).", [
+            "Wait and retry; the worker already retried transient limits.",
+            "Check usage limits at openrouter.ai for your key."
+          ]);
+        }
+        return reviewUnavailable("OpenRouter request failed.", [
+          `HTTP ${or.status}. Check OPENROUTER_MODEL and OPENROUTER_API_KEY.`
+        ]);
+      }
+      return reviewUnavailable("OpenRouter returned a response we could not parse as JSON.", [
+        "Confirm the model supports JSON mode or try OPENROUTER_REASONING=false."
+      ]);
+    }
+  }
+
+  const apiKey = env?.GEMINI_API_KEY;
+  const model = env?.GEMINI_MODEL || "gemini-2.5-flash";
+
   const callGemini = async (generationConfig) => {
-    const res = await fetch(
+    const res = await fetchWithRetry(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
       {
         method: "POST",
@@ -510,8 +654,17 @@ approved=true if flag severities and citations are plausibly supported by the ex
     }
 
     if (!res.ok) {
+      if (res.status === 429) {
+        return reviewUnavailable(
+          "Gemini rate limit (HTTP 429): this key has hit Google’s requests-per-minute or daily quota.",
+          [
+            "Wait 1–2 minutes and run the audit again (the worker already retried several times).",
+            "Prefer OPENROUTER_API_KEY to offload compliance review from Gemini."
+          ]
+        );
+      }
       return reviewUnavailable("Gemini API request failed.", [
-        `HTTP ${res.status}. Check the model name (GEMINI_MODEL) and API key in the Google AI / Cloud console.`
+        `HTTP ${res.status}. Check GEMINI_MODEL and the API key in Google AI Studio / Cloud console.`
       ]);
     }
 
@@ -529,7 +682,7 @@ approved=true if flag severities and citations are plausibly supported by the ex
       "Try again in a moment, or confirm the model supports JSON output."
     ]);
   } catch (e) {
-    return reviewUnavailable("Gemini review failed with an unexpected error.", [
+    return reviewUnavailable("LLM review failed with an unexpected error.", [
       String(e?.message || e || "unknown")
     ]);
   }
